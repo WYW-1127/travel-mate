@@ -21,6 +21,7 @@
 - 密钥只存 `.env`（已 gitignore），绝不入库、尽量不进对话
 - 测试必须离线（GLM 用假对象注入、高德用 respx）；改动后跑全量测试再提交
 - git：中文 conventional commits，完成即 commit + push；push 走本地代理 127.0.0.1:7897（已配置）
+- 交接文档（HANDOFF.md / 待办速览）只在用户明确说「要开新窗口」时更新，平时任务完成只提交代码，别动交接文档
 - 工作流：新功能先走 brainstorming → writing-plans（存 `docs/superpowers/plans/`）→ 内联实施（用户嫌 subagent 流程慢）
 - Windows + Git Bash 踩坑清单见 `docs/HANDOFF.md` §7（curl 中文、bat 编码、GLM 思考无法关闭等）
 
