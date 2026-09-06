@@ -39,7 +39,7 @@
 **Interfaces:**
 - Consumes: 无（首个任务）
 - Produces:
-  - `app.core.config.Settings` / `get_settings() -> Settings`（字段：`glm_api_key: str=""`、`glm_model: str="glm-4.6"`、`glm_base_url: str="https://open.bigmodel.cn/api/paas/v4"`、`amap_web_key: str=""`、`cors_origins: str="http://localhost:5173"`；属性 `has_glm: bool`、`has_amap: bool`）
+  - `app.core.config.Settings` / `get_settings() -> Settings`（字段：`glm_api_key: str=""`、`glm_model: str="glm-5.3-flash"`、`glm_base_url: str="https://open.bigmodel.cn/api/paas/v4"`、`amap_web_key: str=""`、`cors_origins: str="http://localhost:5173"`；属性 `has_glm: bool`、`has_amap: bool`）
   - `app.main.app`（FastAPI 实例，挂载 `/api/health`，CORS 放行 `cors_origins` 逗号分隔列表）
   - `tests/conftest.py` 的 `client` fixture：`AsyncClient`（ASGITransport，base_url=`http://test`）——后续 API 任务复用
 
