@@ -66,7 +66,7 @@ rem ---- 4. 等待后端就绪并打开浏览器 ----
 echo 等待后端就绪...
 set /a TRIES=0
 :waitloop
-%SystemRoot%\System32	imeout.exe /t 2 /nobreak >nul
+ping -n 3 127.0.0.1 >nul
 curl -s -o nul http://127.0.0.1:8000/api/health
 if errorlevel 1 (
   set /a TRIES+=1
@@ -79,7 +79,7 @@ echo ================================================
 echo   已启动: http://localhost:5173
 echo   停止服务: 双击 stop.bat 或关闭两个服务窗口
 echo ================================================
-%SystemRoot%\System32	imeout.exe /t 10 >nul
+ping -n 11 127.0.0.1 >nul
 exit /b 0
 
 :error
