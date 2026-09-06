@@ -57,7 +57,7 @@ function onDrop() {
           <span v-if="unresolved" class="rounded bg-amber-100 px-1.5 text-xs text-amber-600">未定位</span>
         </div>
         <div class="mt-0.5 truncate font-medium">{{ activity.name }}</div>
-        <div v-if="activity.notes" class="mt-0.5 truncate text-xs text-slate-400">{{ activity.notes }}</div>
+        <div v-if="activity.notes" class="mt-0.5 text-xs leading-relaxed text-slate-400">{{ activity.notes }}</div>
       </div>
       <div class="flex shrink-0 items-center gap-2">
         <span class="text-sm text-slate-600">¥{{ activity.cost ?? 0 }}</span>
