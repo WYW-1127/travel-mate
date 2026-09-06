@@ -8,6 +8,8 @@
 
 ## 快速开始
 
+**Windows 一键运行**：双击 `start.bat`（首次自动装环境、启动前后端并打开浏览器；`stop.bat` 停止服务）。手动方式：
+
 ```bash
 # 1. 后端
 cd backend && cp .env.example .env   # 填入 GLM_API_KEY 与 AMAP_WEB_KEY（「Web服务」类型）
