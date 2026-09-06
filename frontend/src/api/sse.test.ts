@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { postSSE, SSEError } from '@/api/sse'
+import { postSSE } from '@/api/sse'
 import type { StreamEvent } from '@/types/trip'
 
 function sseResponse(chunks: string[]): Response {
@@ -56,7 +56,10 @@ describe('postSSE', () => {
     const events: StreamEvent[] = []
     const { done } = postSSE('/api/x', { destination: '重庆', days: 1 }, (e) => events.push(e))
     await done
-    expect(events.map((e) => e.stage)).toEqual(['analyze', 'plan'])
+    expect(events.filter((e) => e.type === 'progress').map((e) => ('stage' in e ? e.stage : null))).toEqual([
+      'analyze',
+      'plan',
+    ])
   })
 
   it('一帧包含多个事件', async () => {
@@ -71,7 +74,10 @@ describe('postSSE', () => {
     const events: StreamEvent[] = []
     const { done } = postSSE('/api/x', { destination: '重庆', days: 1 }, (e) => events.push(e))
     await done
-    expect(events.map((e) => e.stage)).toEqual(['plan', 'enrich'])
+    expect(events.filter((e) => e.type === 'progress').map((e) => ('stage' in e ? e.stage : null))).toEqual([
+      'plan',
+      'enrich',
+    ])
   })
 
   it('流结束时残留的不完整帧仍被消费', async () => {

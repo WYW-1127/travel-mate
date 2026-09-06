@@ -26,8 +26,10 @@ export const useCurrentTripStore = defineStore('currentTrip', {
     budgetGrandTotal(): number {
       return this.budgetTotal * this.headcount
     },
-    overBudget: (state) =>
-      state.trip?.budgetLimit != null && this.budgetGrandTotal > state.trip.budgetLimit,
+    overBudget(): boolean {
+      const limit = this.trip?.budgetLimit
+      return limit != null && this.budgetGrandTotal > limit
+    },
     budgetByType: (state) => {
       const result: Record<string, number> = {}
       for (const d of state.trip?.days ?? []) {

@@ -1,11 +1,11 @@
 import type { GenerateRequest, ReplanRequest, StreamEvent } from '@/types/trip'
 
 export class SSEError extends Error {
-  constructor(
-    message: string,
-    public readonly code = 'NETWORK',
-  ) {
+  code: string
+
+  constructor(message: string, code = 'NETWORK') {
     super(message)
+    this.code = code
   }
 }
 
