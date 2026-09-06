@@ -213,7 +213,7 @@ data: {"type":"error","code":"GLM_INVALID_OUTPUT","message":"..."}
 
 ### 5.6 GLM 调用
 
-- 模型：`glm-4.6`（环境变量可配），开启 JSON 输出模式；response_format 不满足时降级为 Prompt 强约束 + 提取 JSON
+- 模型：`glm-5.3-flash`（环境变量可配），开启 JSON 输出模式；response_format 不满足时降级为 Prompt 强约束 + 提取 JSON
 - 超时 120s；Pydantic 校验失败自动重试（含错误反馈，最多 2 次）
 - 并发富化用 `asyncio.gather` + 信号量（并发 5），高德限流超限则退避重试
 

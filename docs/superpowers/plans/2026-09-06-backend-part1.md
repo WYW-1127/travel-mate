@@ -111,7 +111,7 @@ class Settings(BaseSettings):
     )
 
     glm_api_key: str = ""
-    glm_model: str = "glm-4.6"
+    glm_model: str = "glm-5.3-flash"
     glm_base_url: str = "https://open.bigmodel.cn/api/paas/v4"
     amap_web_key: str = ""
     cors_origins: str = "http://localhost:5173"
@@ -181,7 +181,7 @@ app = create_app()
 ```bash
 # 智谱 GLM（https://open.bigmodel.cn 控制台获取）
 GLM_API_KEY=
-GLM_MODEL=glm-4.6
+GLM_MODEL=glm-5.3-flash
 # 高德 Web Service Key（https://console.amap.com，「Web服务」类型）
 AMAP_WEB_KEY=
 # 前端 dev 地址，逗号分隔多个
