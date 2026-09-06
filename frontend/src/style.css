@@ -1,0 +1,11 @@
+@import 'tailwindcss';
+
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  .print-full {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+}
