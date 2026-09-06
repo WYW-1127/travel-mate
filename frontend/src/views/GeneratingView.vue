@@ -17,12 +17,15 @@ onMounted(() => {
   if (generation.phase === 'idle') router.replace({ name: 'home' })
 })
 
-// 结果落地：存库并跳详情（phase 响应式监听，不轮询）
+// 结果落地：带上思考文本存库并跳详情（phase 响应式监听，不轮询）
 watch(
   () => generation.phase,
   (phase) => {
     if (phase === 'done' && generation.result) {
-      const saved = trips.upsert(generation.result)
+      const saved = trips.upsert({
+        ...generation.result,
+        thinking: generation.thinking,
+      })
       router.replace({ name: 'trip-detail', params: { id: saved.id! } })
     }
   },

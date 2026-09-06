@@ -40,6 +40,8 @@ export interface Trip {
   days: Day[]
   version?: number
   warnings?: string[]
+  /** 最近一次生成/重规划的 AI 思考过程，详情页可展开查看 */
+  thinking?: string
 }
 
 export interface GenerateRequest {

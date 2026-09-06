@@ -169,7 +169,7 @@ data: {"type":"complete","trip":{...}}
 data: {"type":"error","code":"GLM_INVALID_OUTPUT","message":"..."}
 ```
 
-`thinking` 事件：GLM 开启思考模式后流式输出的推理过程增量文本（`reasoning_content` delta），前端累积展示为可折叠的「AI 思考过程」面板。thinking 增量不属于结构化结果，校验与错误处理均不依赖它。
+`thinking` 事件：GLM 开启思考模式后流式输出的推理过程增量文本（`reasoning_content` delta），前端累积展示为可折叠的「AI 思考过程」面板。thinking 增量不属于结构化结果，校验与错误处理均不依赖它。生成/重规划完成后，累积的思考文本随行程持久化（`Trip.thinking` 字段），详情页常驻折叠面板可随时展开查看；再次重规划时覆盖为最新思考。
 
 **`POST /api/trips/replan`** → SSE 流（同样的事件格式）
 ```jsonc

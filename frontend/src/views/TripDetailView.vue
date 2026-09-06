@@ -6,6 +6,7 @@ import AMapView, { type MapPoint } from '@/components/AMapView.vue'
 import BudgetPanel from '@/components/BudgetPanel.vue'
 import DayTimeline from '@/components/DayTimeline.vue'
 import ReplanBox from '@/components/ReplanBox.vue'
+import ThinkingPanel from '@/components/ThinkingPanel.vue'
 import { useCurrentTripStore } from '@/stores/currentTrip'
 import { useTripsStore } from '@/stores/trips'
 
@@ -89,6 +90,11 @@ function printPdf() {
 
     <div class="no-print mb-4">
       <ReplanBox />
+    </div>
+
+    <!-- 历史思考过程：随行程持久化，折叠可展开 -->
+    <div v-if="store.trip.thinking" class="no-print mb-4">
+      <ThinkingPanel :text="store.trip.thinking" :running="false" :default-expanded="false" />
     </div>
 
     <div class="grid gap-4 lg:grid-cols-2">

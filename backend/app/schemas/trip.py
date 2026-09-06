@@ -89,3 +89,5 @@ class Trip(CamelModel):
     days: list[Day] = Field(default_factory=list)
     version: int = 1
     warnings: list[str] = Field(default_factory=list)
+    # 最近一次生成/重规划的 AI 思考过程（前端写入，随行程持久化）
+    thinking: str = ""

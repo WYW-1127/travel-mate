@@ -4,9 +4,11 @@ import { nextTick, ref, watch } from 'vue'
 const props = defineProps<{
   text: string
   running: boolean
+  /** 完成后的常驻面板默认折叠，生成进行中默认展开 */
+  defaultExpanded?: boolean
 }>()
 
-const expanded = ref(true)
+const expanded = ref(props.defaultExpanded ?? true)
 const body = ref<HTMLElement | null>(null)
 
 // 有新思考内容时保持滚动到底部

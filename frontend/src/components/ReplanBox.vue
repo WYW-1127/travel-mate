@@ -23,8 +23,9 @@ async function submit() {
   await done
   if (generation.phase === 'done' && generation.result) {
     trips.saveSnapshot(current)
-    store.replaceTrip(generation.result)
-    trips.upsert(generation.result)
+    const next = { ...generation.result, thinking: generation.thinking }
+    store.replaceTrip(next)
+    trips.upsert(next)
     request.value = ''
   }
 }

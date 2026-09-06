@@ -61,3 +61,11 @@ def test_extra_fields_ignored():
     data["llmSays"] = "trust me"
     trip = Trip.model_validate(data)
     assert trip.destination == "重庆"
+
+
+def test_trip_thinking_field_round_trips():
+    data = _trip_data()
+    data["thinking"] = "推理过程……"
+    trip = Trip.model_validate(data)
+    assert trip.thinking == "推理过程……"
+    assert Trip.model_validate(trip.model_dump(by_alias=True)).thinking == "推理过程……"
