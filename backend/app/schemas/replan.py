@@ -1,3 +1,5 @@
+from typing import Literal
+
 from pydantic import Field
 
 from app.schemas.trip import CamelModel, Trip
@@ -6,3 +8,4 @@ from app.schemas.trip import CamelModel, Trip
 class ReplanRequest(CamelModel):
     trip: Trip
     request: str = Field(min_length=1, max_length=2000)
+    thinking_effort: Literal["low", "high"] | None = None

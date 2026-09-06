@@ -28,7 +28,7 @@ async def replan_trip(
     glm: GLMService | None = None,
     amap: AMapService | None = None,
 ) -> AsyncIterator[StreamEvent]:
-    glm = glm or GLMService()
+    glm = glm or GLMService(thinking_effort=req.thinking_effort)
     amap = amap or AMapService()
     trip = req.trip.model_copy(deep=True)
 

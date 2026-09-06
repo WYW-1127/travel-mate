@@ -16,10 +16,6 @@ router = APIRouter(prefix="/trips", tags=["trips"])
 SSE_HEADERS = {"Cache-Control": "no-cache", "X-Accel-Buffering": "no"}
 
 
-def get_glm() -> GLMService:
-    return GLMService()
-
-
 def get_amap() -> AMapService:
     return AMapService()
 
@@ -38,11 +34,11 @@ def _sse(events: AsyncIterator[StreamEvent]) -> AsyncIterator[str]:
 @router.post("/generate")
 async def generate(
     req: GenerateRequest,
-    glm: GLMService = Depends(get_glm),
     amap: AMapService = Depends(get_amap),
 ) -> StreamingResponse:
+    # thinking_effort 是逐请求档位，GLMService 必须按请求构造，不能走单例依赖
     return StreamingResponse(
-        _sse(generate_trip(req, glm=glm, amap=amap)),
+        _sse(generate_trip(req, glm=GLMService(thinking_effort=req.thinking_effort), amap=amap)),
         media_type="text/event-stream",
         headers=SSE_HEADERS,
     )
@@ -51,11 +47,10 @@ async def generate(
 @router.post("/replan")
 async def replan(
     req: ReplanRequest,
-    glm: GLMService = Depends(get_glm),
     amap: AMapService = Depends(get_amap),
 ) -> StreamingResponse:
     return StreamingResponse(
-        _sse(replan_trip(req, glm=glm, amap=amap)),
+        _sse(replan_trip(req, glm=GLMService(thinking_effort=req.thinking_effort), amap=amap)),
         media_type="text/event-stream",
         headers=SSE_HEADERS,
     )

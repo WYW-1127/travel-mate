@@ -11,7 +11,8 @@ class Settings(BaseSettings):
     glm_api_key: str = ""
     glm_model: str = "glm-5.3-flash"
     glm_base_url: str = "https://open.bigmodel.cn/api/paas/v4"
-    glm_thinking: bool = True
+    # glm-5.3 系始终思考，档位 low/high 控制思考量
+    glm_thinking_effort: str = "high"
     amap_web_key: str = ""
     cors_origins: str = "http://localhost:5173"
 

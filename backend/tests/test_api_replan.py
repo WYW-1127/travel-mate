@@ -1,16 +1,12 @@
 import pytest
 
-from app.api.trips import get_amap, get_glm
+from app.api.trips import get_amap
 from app.main import app
 from app.schemas.events import CompleteEvent
 from app.services.amap import AMapService
-from app.services.glm import GLMService
 
 REPLANNER = "app.agent.replanner.replan_trip"
 
-
-class StubGLM(GLMService):
-    pass
 
 
 class StubAMap(AMapService):
@@ -26,7 +22,6 @@ def _install():
     import app.api.trips as trips_api
 
     trips_api.replan_trip = fake_replan
-    app.dependency_overrides[get_glm] = lambda: StubGLM(api_key="x")
     app.dependency_overrides[get_amap] = lambda: StubAMap(key="x")
     yield
     app.dependency_overrides.clear()

@@ -11,11 +11,15 @@ const generation = useGenerationStore()
 const trips = useTripsStore()
 
 const request = ref('')
+const thinking = ref(true)
 
 async function submit() {
   if (!request.value.trim() || !store.trip || generation.phase === 'running') return
   const current = store.trip
-  const done = generation.run('/api/trips/replan', { trip: current, request: request.value.trim() })
+  const done = generation.run(
+    '/api/trips/replan',
+    { trip: current, request: request.value.trim(), thinking_effort: thinking.value ? 'high' : 'low' },
+  )
   await done
   if (generation.phase === 'done' && generation.result) {
     trips.saveSnapshot(current)
@@ -58,6 +62,10 @@ function undo() {
         撤销
       </button>
     </div>
+    <label class="mt-2 flex w-fit cursor-pointer items-center gap-1.5 text-xs text-slate-500">
+      <input v-model="thinking" type="checkbox" class="h-3.5 w-3.5 accent-teal-600" />
+      深度思考（取消=快速档）
+    </label>
     <p v-if="generation.phase === 'running'" class="mt-2 h-4 text-xs text-teal-700">
       {{ generation.messages.at(-1) ?? '…' }}
     </p>

@@ -1,4 +1,5 @@
 import httpx
+import json
 import pytest
 import respx
 
@@ -84,3 +85,22 @@ async def test_chat_json_stream_http_error_raises():
     svc = GLMService(api_key="k", client=httpx.AsyncClient())
     with pytest.raises(GLMError, match="500"):
         await svc.chat_json_stream("sys", "usr", on_thinking=lambda s: None)
+
+
+@respx.mock
+async def test_thinking_effort_controls_payload():
+    captured: list[dict] = []
+
+    def capture(request: httpx.Request) -> httpx.Response:
+        captured.append(json.loads(request.content))
+        return httpx.Response(
+            200, json={"choices": [{"message": {"content": "{}"}}]}
+        )
+
+    respx.post(f"{BASE}/chat/completions").mock(side_effect=capture)
+
+    await GLMService(api_key="k", thinking_effort="high", client=httpx.AsyncClient()).chat_json("s", "u")
+    await GLMService(api_key="k", thinking_effort="low", client=httpx.AsyncClient()).chat_json("s", "u")
+
+    assert captured[0]["thinking"] == {"type": "enabled", "effort": "high"}
+    assert captured[1]["thinking"] == {"type": "enabled", "effort": "low"}

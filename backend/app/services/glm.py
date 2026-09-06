@@ -38,13 +38,15 @@ class GLMService:
         model: str = "",
         base_url: str = "",
         client: httpx.AsyncClient | None = None,
-        thinking: bool | None = None,
+        thinking_effort: str | None = None,
     ):
         s = get_settings()
         self._api_key = api_key or s.glm_api_key
         self._model = model or s.glm_model
         self._base_url = (base_url or s.glm_base_url).rstrip("/")
-        self._thinking = s.glm_thinking if thinking is None else thinking
+        self._thinking_effort = (
+            s.glm_thinking_effort if thinking_effort is None else thinking_effort
+        )
         self._client = client
         self._owns_client = client is None
 
@@ -63,8 +65,8 @@ class GLMService:
             "response_format": {"type": "json_object"},
             "stream": stream,
         }
-        if stream and self._thinking:
-            payload["thinking"] = {"type": "enabled"}
+        # glm-5.3 系始终思考，effort 控制思考深度（low=快速，high=深度）
+        payload["thinking"] = {"type": "enabled", "effort": self._thinking_effort}
         return payload
 
     async def chat_json(self, system: str, user: str, temperature: float = 0.3) -> dict:

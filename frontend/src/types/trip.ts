@@ -49,11 +49,14 @@ export interface GenerateRequest {
   travelers?: Travelers
   budgetLimit?: number | null
   preferences?: string
+  /** AI 思考深度：low=快速（浅思考），high=深度（慢但更合理）；不传跟随服务端默认 */
+  thinking_effort?: 'low' | 'high'
 }
 
 export interface ReplanRequest {
   trip: Trip
   request: string
+  thinking_effort?: 'low' | 'high'
 }
 
 export type ProgressStage = 'analyze' | 'plan' | 'enrich' | 'validate'
