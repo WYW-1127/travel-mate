@@ -105,7 +105,14 @@ function onDrop() {
         placeholder="名称"
         @input="emit('update', { name: ($event.target as HTMLInputElement).value })"
       />
-      <div class="flex gap-2">
+      <textarea
+        :value="activity.notes"
+        rows="2"
+        class="w-full resize-y rounded border border-slate-300 px-2 py-1 text-sm leading-relaxed"
+        placeholder="备注（建议、预约提示、路线要点等）"
+        @input="emit('update', { notes: ($event.target as HTMLTextAreaElement).value })"
+      />
+      <div class="flex items-center gap-2">
         <input
           :value="activity.cost"
           type="number"
@@ -114,13 +121,7 @@ function onDrop() {
           placeholder="人均¥"
           @input="emit('update', { cost: Number(($event.target as HTMLInputElement).value) || 0 })"
         />
-        <input
-          :value="activity.notes"
-          class="flex-1 rounded border border-slate-300 px-2 py-1 text-sm"
-          placeholder="备注"
-          @input="emit('update', { notes: ($event.target as HTMLInputElement).value })"
-        />
-        <button class="rounded bg-teal-600 px-3 py-1 text-sm text-white" @click="editing = false">完成</button>
+        <button class="ml-auto rounded bg-teal-600 px-3 py-1 text-sm text-white" @click="editing = false">完成</button>
       </div>
     </div>
   </div>
