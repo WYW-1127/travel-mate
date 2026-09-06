@@ -152,6 +152,14 @@ def test_draft_to_trip_merges_request_fields():
     assert trip.version == 1
 
 
+def test_draft_to_trip_assigns_unique_activity_ids():
+    # GLM 草稿不含 id，落库前必须补齐：前端卡片 key 与地图联动依赖它
+    trip = draft_to_trip(GOOD_DRAFT, REQ)
+    ids = [a.id for d in trip.days for a in d.activities]
+    assert all(ids)
+    assert len(ids) == len(set(ids))
+
+
 def test_draft_to_trip_rejects_garbage():
     with pytest.raises(ValidationError):
         draft_to_trip({"days": "不是列表"}, REQ)

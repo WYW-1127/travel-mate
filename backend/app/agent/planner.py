@@ -1,4 +1,5 @@
 import asyncio
+import uuid
 from collections.abc import AsyncIterator, Awaitable, Callable
 
 from pydantic import ValidationError
@@ -71,6 +72,13 @@ async def enrich_activities(
     await asyncio.gather(*(one(a) for a in activities))
 
 
+def assign_activity_ids(activities: list[Activity]) -> None:
+    """GLM 草稿不输出活动 id，前端卡片 key 与地图联动依赖它，空 id 就地补齐。"""
+    for act in activities:
+        if not act.id:
+            act.id = uuid.uuid4().hex
+
+
 def draft_to_trip(draft: dict, req: GenerateRequest) -> Trip:
     data = {
         **draft,
@@ -80,7 +88,10 @@ def draft_to_trip(draft: dict, req: GenerateRequest) -> Trip:
         "budgetLimit": req.budget_limit,
         "version": 1,
     }
-    return Trip.model_validate(data)
+    trip = Trip.model_validate(data)
+    for day in trip.days:
+        assign_activity_ids(day.activities)
+    return trip
 
 
 async def generate_trip(

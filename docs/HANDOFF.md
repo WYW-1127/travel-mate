@@ -34,7 +34,7 @@
 | 文件 | 状态 |
 |---|---|
 | `backend/.env` | ✅ 已配置 `GLM_API_KEY`（智谱）+ `AMAP_WEB_KEY`（高德「Web服务」类型，已验证可用）。`.env` 已 gitignore |
-| `frontend/.env` | ⚠️ **已创建但两个值是空的**：`VITE_AMAP_JS_KEY`、`VITE_AMAP_SECURITY_CODE` 待用户填入「Web端(JS API)」类型的 Key + 安全密钥。**填完必须重启 vite**（只在启动时读 env）。地图组件已就绪，无 Key 时降级为提示、不阻断 |
+| `frontend/.env` | ✅ 已填入 `VITE_AMAP_JS_KEY` + `VITE_AMAP_SECURITY_CODE`（2026-09-07），地图已实测联动正常 |
 
 - 高德控制台：console.amap.com，应用名 `travel-mate`，账号有多个 Key（「Web服务」和「Web端(JS API)」是两种不同类型的 Key，不通用）
 - 智谱控制台：open.bigmodel.cn，模型 glm-5.3-flash
@@ -46,19 +46,20 @@
 - ✅ 思考深度档位：`thinking_effort: "low" | "high"` 逐请求生效（首页/重规划框勾选框）；`.env` 的 `GLM_THINKING_EFFORT` 为默认值
 - ✅ 高德 POI 定位：关键词清洗（剥"午餐·X（XX店）"类修饰）→ POI 搜索 → geocode 兜底；限流退避（码 10014/10019/10020/10021/10022/10044，1s/2s 两次）；进程级缓存；并发 3（个人 key QPS=3）
 - ✅ 确定性校验器：时段重叠/结束早于开始（fail）、未定位比例 >30%（fail）、相邻距离 >50km（warn）、超预算（warn）；失败带反馈自动重试 ≤2 次
-- ✅ 行程详情：逐日 Tab + 时间线行内编辑/增删/HTML5 拖拽排序；地图 Marker 按类型着色 + 按天折线 + 卡片↔Marker 双向联动（待用户配 Key 后实测）；预算面板实时重算
+- ✅ 行程详情：逐日 Tab + 时间线行内编辑/增删/HTML5 拖拽排序；地图 Marker 按类型着色 + 按天折线 + 卡片↔Marker 双向联动（2026-09-07 浏览器实测通过）；预算面板实时重算
 - ✅ 自然语言重规划：影响范围分析 → 只重生成受影响的天 → version+1 → 快照栈（≤5 版）一键撤销
 - ✅ 导出：打印样式 PDF（window.print）+ JSON 下载；我的行程列表（打开/复制/删除）
 - ✅ 测试：后端 pytest 66 项、前端 Vitest 15 项，全绿；`npm run build` 通过；`start.bat` 幂等可重复运行
 
 ## 6. 下一步候选（用户未明确排序）
 
-1. **等用户填前端地图 Key** → 重启前端 → 浏览器实测地图联动（Marker/折线/双向高亮），这是当前最近的未验证项
-2. JSON 导入（导出的对称功能，未做）
-3. 图片导出、行程分享
-4. spec §3.2 演进路线：V2 Tool Calling → V3 Agent Loop → V4 LangGraph → V5 MCP → V6 Memory → V7 Multi-Agent（用户明确要求逐阶段学，不要跳级）
-5. 账号系统 + 云同步（spec §2.2 明确 MVP 不做，做之前需重读 spec）
-6. 注意：高德个人 key POI 搜索日配额有限（百次级），大量端到端测试会烧穿，当天配额耗尽会再次出现"未定位"比例升高
+1. JSON 导入（导出的对称功能，未做）
+2. 图片导出、行程分享
+3. spec §3.2 演进路线：V2 Tool Calling → V3 Agent Loop → V4 LangGraph → V5 MCP → V6 Memory → V7 Multi-Agent（用户明确要求逐阶段学，不要跳级）
+4. 账号系统 + 云同步（spec §2.2 明确 MVP 不做，做之前需重读 spec）
+5. 注意：高德个人 key POI 搜索日配额有限（百次级），大量端到端测试会烧穿，当天配额耗尽会再次出现"未定位"比例升高
+
+> 2026-09-07 已完成：地图 Key 配置 + 浏览器实测地图联动；修复联动失效 bug（GLM 草稿不输出活动 id，导致 id 全为空串——后端生成/重规划后补齐唯一 id，前端 `:key` 空串回退；旧 localStorage 行程的 id 仍是空的，联动对这些老数据无效，重新生成即可）。
 
 ## 7. 踩坑记录（新会话必读，都是真实踩过的）
 
@@ -71,6 +72,7 @@
 **GLM（智谱）：**
 - glm-5.3-flash **始终思考无法关闭**，`thinking.type=disabled` 返回 1210 错误；只能 `{"type":"enabled","effort":"low"|"high"}`
 - OpenAI 兼容端点 `https://open.bigmodel.cn/api/paas/v4`；思考内容在 `delta.reasoning_content`
+- GLM 草稿 JSON **不输出活动 id**（提示词没要求）——凡是从草稿 model_validate 出来的 Activity 都要后端补齐 id（planner.assign_activity_ids），否则前端联动/排序 key 全断
 
 **高德：**
 - infocode 10009 = Key 平台类型不匹配（Web服务 vs JS API 是两种 Key）；10014 = QPS 超限；v3 place/text 对假地名也会模糊返回，判断搜索失败要看 pois 空

@@ -4,7 +4,11 @@ import asyncio
 
 from pydantic import ValidationError
 
-from app.agent.planner import chat_stream_to_queue, enrich_activities
+from app.agent.planner import (
+    assign_activity_ids,
+    chat_stream_to_queue,
+    enrich_activities,
+)
 from app.agent.prompts import day_regen_messages, replan_scope_messages
 from app.agent.validator import validate_trip
 from app.schemas.events import (
@@ -95,6 +99,7 @@ async def replan_trip(
                         day_draft = event
                 await task
                 new_day = Day.model_validate(day_draft)
+                assign_activity_ids(new_day.activities)
             except (GLMError, ValidationError) as e:
                 feedback = [f"第 {idx + 1} 天重新生成失败：{e}"]
                 ok = False

@@ -86,6 +86,16 @@ async def test_replan_replaces_only_affected_day():
     assert trip.days[0].activities[0].location.resolved is True
 
 
+async def test_replan_assigns_ids_to_regenerated_activities():
+    # 重新生成的天来自 GLM 草稿（无 id），必须补齐否则地图联动失效
+    glm = FakeGLM([{"affectedDayIndexes": [0]}, NEW_DAY])
+    events = [e async for e in replan_trip(_req(), glm=glm, amap=FakeAMap())]
+    trip = events[-1].trip
+    new_ids = [a.id for a in trip.days[0].activities]
+    assert all(new_ids)
+    assert "a3" in [a.id for a in trip.days[1].activities]  # 未受影响天不受影响
+
+
 async def test_scope_prompt_contains_trip_and_request():
     glm = FakeGLM([{"affectedDayIndexes": [0]}, NEW_DAY])
     _ = [e async for e in replan_trip(_req(), glm=glm, amap=FakeAMap())]

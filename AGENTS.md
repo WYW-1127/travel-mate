@@ -24,7 +24,7 @@
 - 工作流：新功能先走 brainstorming → writing-plans（存 `docs/superpowers/plans/`）→ 内联实施（用户嫌 subagent 流程慢）
 - Windows + Git Bash 踩坑清单见 `docs/HANDOFF.md` §7（curl 中文、bat 编码、GLM 思考无法关闭等）
 
-## 当前待办速览（截至 2026-09-06）
+## 当前待办速览（截至 2026-09-07）
 
-- ⚠️ `frontend/.env` 的地图 Key 待用户填写（填后重启 vite，实测地图联动）
+- ✅ 前端地图 Key 已配置，地图联动已实测通过（含 Activity.id 缺失导致联动失效的修复）
 - 候选：JSON 导入、分享、spec §3.2 演进路线 V2（Tool Calling，用户要求逐阶段推进不跳级）

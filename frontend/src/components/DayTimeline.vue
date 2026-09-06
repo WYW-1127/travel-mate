@@ -42,7 +42,7 @@ function onDrop(onto: number) {
     <div class="relative space-y-2 before:absolute before:top-2 before:bottom-2 before:left-[7px] before:w-px before:bg-slate-200">
       <ActivityCard
         v-for="(activity, i) in day.activities"
-        :key="activity.id ?? i"
+        :key="activity.id || i"
         :activity="activity"
         :index="i"
         :highlight="highlightId === activity.id"
