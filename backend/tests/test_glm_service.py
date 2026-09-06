@@ -52,3 +52,35 @@ async def test_chat_json_without_key_raises():
     svc = GLMService(api_key="", client=httpx.AsyncClient())
     with pytest.raises(GLMError, match="GLM_API_KEY"):
         await svc.chat_json("sys", "usr")
+
+
+def _stream_body() -> str:
+    return (
+        'data: {"choices":[{"delta":{"reasoning_content":"用户想去重庆，"}}]}\n'
+        'data: {"choices":[{"delta":{"reasoning_content":"节奏要放慢"}}]}\n'
+        'data: {"choices":[{"delta":{"content":"{\\"title\\": "}}]}\n'
+        'data: {"choices":[{"delta":{"content":"\\"重庆一日游\\"}"}}]}\n'
+        "data: [DONE]\n\n"
+    )
+
+
+@respx.mock
+async def test_chat_json_stream_forwards_thinking_and_parses_content():
+    respx.post(f"{BASE}/chat/completions").mock(
+        return_value=httpx.Response(200, content=_stream_body().encode("utf-8"))
+    )
+    thoughts: list[str] = []
+    svc = GLMService(api_key="k", client=httpx.AsyncClient())
+    result = await svc.chat_json_stream("sys", "usr", on_thinking=thoughts.append)
+    assert thoughts == ["用户想去重庆，", "节奏要放慢"]
+    assert result == {"title": "重庆一日游"}
+
+
+@respx.mock
+async def test_chat_json_stream_http_error_raises():
+    respx.post(f"{BASE}/chat/completions").mock(
+        return_value=httpx.Response(500, text="boom")
+    )
+    svc = GLMService(api_key="k", client=httpx.AsyncClient())
+    with pytest.raises(GLMError, match="500"):
+        await svc.chat_json_stream("sys", "usr", on_thinking=lambda s: None)

@@ -17,6 +17,13 @@ class ProgressEvent(CamelModel):
     message: str
 
 
+class ThinkingEvent(CamelModel):
+    """GLM 思考模式输出的推理过程增量文本，仅用于前端展示。"""
+
+    type: Literal["thinking"] = "thinking"
+    content: str
+
+
 class CompleteEvent(CamelModel):
     type: Literal["complete"] = "complete"
     trip: Trip
@@ -28,7 +35,7 @@ class ErrorEvent(CamelModel):
     message: str
 
 
-StreamEvent = ProgressEvent | CompleteEvent | ErrorEvent
+StreamEvent = ProgressEvent | ThinkingEvent | CompleteEvent | ErrorEvent
 
 
 def encode_event(event: StreamEvent) -> str:

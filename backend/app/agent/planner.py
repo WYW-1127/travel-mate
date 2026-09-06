@@ -11,6 +11,7 @@ from app.schemas.events import (
     ProgressEvent,
     ProgressStage,
     StreamEvent,
+    ThinkingEvent,
 )
 from app.schemas.generate import GenerateRequest
 from app.schemas.trip import Activity, ActivityType, Location, Trip
@@ -20,6 +21,27 @@ from app.tools.poi import search_poi
 
 MAX_ATTEMPTS = 3  # 首次 + 2 次带反馈重试
 CONCURRENCY = 5
+
+
+async def chat_stream_to_queue(
+    glm: GLMService,
+    system: str,
+    user: str,
+    queue: asyncio.Queue,
+) -> None:
+    """GLM 流式调用协程（调用方 create_task 后轮询 queue）：
+    thinking 增量以 ThinkingEvent 入队；结束时入队最终 dict（成功）或 GLMError（失败）。"""
+    try:
+        result = await glm.chat_json_stream(
+            system,
+            user,
+            on_thinking=lambda s: queue.put_nowait(ThinkingEvent(content=s)),
+        )
+        await queue.put(result)
+    except GLMError as e:
+        await queue.put(e)
+    except Exception as e:  # noqa: BLE001 —— httpx 网络错误等按 GLM 失败处理
+        await queue.put(GLMError(f"GLM 连接失败：{e}"))
 
 
 async def enrich_activities(
@@ -87,7 +109,20 @@ async def generate_trip(
             )
             system, user = trip_draft_messages(req, feedback)
             try:
-                draft = await glm.chat_json(system, user)
+                queue: asyncio.Queue = asyncio.Queue()
+                task = asyncio.create_task(
+                    chat_stream_to_queue(glm, system, user, queue)
+                )
+                draft = None
+                while draft is None:
+                    event = await queue.get()
+                    if isinstance(event, ThinkingEvent):
+                        yield event
+                    elif isinstance(event, GLMError):
+                        raise event
+                    else:
+                        draft = event
+                await task
             except GLMError as e:
                 yield ErrorEvent(code="GLM_ERROR", message=str(e))
                 return

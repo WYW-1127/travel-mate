@@ -11,6 +11,7 @@ class Settings(BaseSettings):
     glm_api_key: str = ""
     glm_model: str = "glm-5.3-flash"
     glm_base_url: str = "https://open.bigmodel.cn/api/paas/v4"
+    glm_thinking: bool = True
     amap_web_key: str = ""
     cors_origins: str = "http://localhost:5173"
 

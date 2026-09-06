@@ -60,5 +60,6 @@ export type ProgressStage = 'analyze' | 'plan' | 'enrich' | 'validate'
 
 export type StreamEvent =
   | { type: 'progress'; stage: ProgressStage; message: string }
+  | { type: 'thinking'; content: string }
   | { type: 'complete'; trip: Trip }
   | { type: 'error'; code: string; message: string }

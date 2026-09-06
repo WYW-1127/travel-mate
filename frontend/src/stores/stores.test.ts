@@ -129,3 +129,30 @@ describe('generation store', () => {
     vi.unstubAllGlobals()
   })
 })
+
+describe('generation store thinking', () => {
+  it('thinking 事件增量累积，reset 清空', async () => {
+    const { createPinia, setActivePinia: rePinia } = await import('pinia')
+    rePinia(createPinia())
+    const { useGenerationStore } = await import('@/stores/generation')
+    const gen = useGenerationStore()
+
+    const sseBody =
+      'data: {"type":"thinking","content":"用户想去"}\n\n' +
+      'data: {"type":"thinking","content":"重庆玩三天"}\n\n' +
+      'data: {"type":"progress","stage":"plan","message":"规划中"}\n\n' +
+      'data: {"type":"complete","trip":{"destination":"重庆","days":[]}}\n\n'
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => new Response(sseBody, { status: 200 })),
+    )
+    const done = gen.run('/api/trips/generate', { destination: '重庆', days: 3 })
+    await done
+    expect(gen.thinking).toBe('用户想去重庆玩三天')
+    expect(gen.phase).toBe('done')
+
+    gen.reset()
+    expect(gen.thinking).toBe('')
+    vi.unstubAllGlobals()
+  })
+})

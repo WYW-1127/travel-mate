@@ -162,11 +162,14 @@ backend/
 
 // SSE 事件流（data: 行，每行一个 JSON）
 data: {"type":"progress","stage":"analyze","message":"正在分析旅行需求"}
+data: {"type":"thinking","content":"用户想去重庆，带孩子的话节奏要放慢……"}
 data: {"type":"progress","stage":"plan","message":"正在规划第 1 天"}
 data: {"type":"progress","stage":"enrich","message":"正在定位景点（8/12）"}
 data: {"type":"complete","trip":{...}}
 data: {"type":"error","code":"GLM_INVALID_OUTPUT","message":"..."}
 ```
+
+`thinking` 事件：GLM 开启思考模式后流式输出的推理过程增量文本（`reasoning_content` delta），前端累积展示为可折叠的「AI 思考过程」面板。thinking 增量不属于结构化结果，校验与错误处理均不依赖它。
 
 **`POST /api/trips/replan`** → SSE 流（同样的事件格式）
 ```jsonc
@@ -214,6 +217,7 @@ data: {"type":"error","code":"GLM_INVALID_OUTPUT","message":"..."}
 ### 5.6 GLM 调用
 
 - 模型：`glm-5.3-flash`（环境变量可配），开启 JSON 输出模式；response_format 不满足时降级为 Prompt 强约束 + 提取 JSON
+- **流式 + 思考模式**：`stream=true` + `thinking={"type":"enabled"}`，推理过程（`delta.reasoning_content`）以 `thinking` SSE 事件实时透传给前端，最终 JSON 内容（`delta.content`）在流结束后解析
 - 超时 120s；Pydantic 校验失败自动重试（含错误反馈，最多 2 次）
 - 并发富化用 `asyncio.gather` + 信号量（并发 5），高德限流超限则退避重试
 

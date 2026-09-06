@@ -43,8 +43,9 @@ class FakeGLM(GLMService):
         self.responses = list(responses)
         self.users: list[str] = []
 
-    async def chat_json(self, system, user, temperature=0.3):
+    async def chat_json_stream(self, system, user, on_thinking, temperature=0.3):
         self.users.append(user)
+        on_thinking("分析受影响的天…")
         return self.responses.pop(0)
 
 

@@ -2,6 +2,7 @@
 import { computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 
+import ThinkingPanel from '@/components/ThinkingPanel.vue'
 import { useGenerationStore } from '@/stores/generation'
 import { useTripsStore } from '@/stores/trips'
 
@@ -39,6 +40,9 @@ function backHome() {
       <div class="mx-auto mb-6 h-12 w-12 animate-spin rounded-full border-4 border-teal-200 border-t-teal-600"></div>
       <h2 class="mb-2 text-xl font-bold">正在为你规划行程…</h2>
       <p class="h-5 text-slate-500">{{ latest }}</p>
+      <div class="mx-auto mt-6 max-w-xl">
+        <ThinkingPanel :text="generation.thinking" running />
+      </div>
       <button class="mt-8 text-sm text-slate-400 hover:text-slate-600" @click="backHome">取消，返回</button>
     </template>
 

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 
+import ThinkingPanel from '@/components/ThinkingPanel.vue'
 import { useCurrentTripStore } from '@/stores/currentTrip'
 import { useGenerationStore } from '@/stores/generation'
 import { useTripsStore } from '@/stores/trips'
@@ -60,6 +61,9 @@ function undo() {
     <p v-if="generation.phase === 'running'" class="mt-2 h-4 text-xs text-teal-700">
       {{ generation.messages.at(-1) ?? '…' }}
     </p>
+    <div v-if="generation.phase === 'running'" class="mt-2">
+      <ThinkingPanel :text="generation.thinking" running />
+    </div>
     <p v-else-if="generation.phase === 'error'" class="mt-2 text-xs text-red-600">
       {{ generation.error?.message }}
     </p>

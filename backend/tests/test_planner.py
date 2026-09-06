@@ -42,8 +42,10 @@ class FakeGLM(GLMService):
         self.drafts = list(drafts)
         self.calls: list[tuple[str, str]] = []
 
-    async def chat_json(self, system: str, user: str, temperature: float = 0.3):
+    async def chat_json_stream(self, system, user, on_thinking, temperature=0.3):
         self.calls.append((system, user))
+        on_thinking("模拟思考片段一。")
+        on_thinking("模拟思考片段二。")
         d = self.drafts.pop(0)
         if isinstance(d, Exception):
             raise d
@@ -84,6 +86,15 @@ async def test_happy_path_progress_then_complete():
     assert trip.destination == "重庆"
     assert trip.title == "重庆2日游"
     assert trip.days[0].activities[0].location.resolved is True
+
+
+async def test_thinking_events_streamed_before_complete():
+    events = await _collect(glm=FakeGLM([GOOD_DRAFT]), amap=FakeAMap())
+    thinking = [e for e in events if e.type == "thinking"]
+    assert [t.content for t in thinking] == ["模拟思考片段一。", "模拟思考片段二。"]
+    # thinking 全部出现在 complete 之前
+    assert events.index(thinking[-1]) < len(events) - 1
+    assert types(events)[-1] == "complete"
 
 
 async def test_unresolved_poi_kept_with_flag():

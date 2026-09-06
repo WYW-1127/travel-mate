@@ -1,8 +1,10 @@
 from collections.abc import AsyncIterator
 
+import asyncio
+
 from pydantic import ValidationError
 
-from app.agent.planner import enrich_activities
+from app.agent.planner import chat_stream_to_queue, enrich_activities
 from app.agent.prompts import day_regen_messages, replan_scope_messages
 from app.agent.validator import validate_trip
 from app.schemas.events import (
@@ -11,6 +13,7 @@ from app.schemas.events import (
     ProgressEvent,
     ProgressStage,
     StreamEvent,
+    ThinkingEvent,
 )
 from app.schemas.replan import ReplanRequest
 from app.schemas.trip import Day, Trip
@@ -31,7 +34,22 @@ async def replan_trip(
 
     yield ProgressEvent(stage=ProgressStage.analyze, message="正在理解你的调整需求")
     try:
-        scope = await glm.chat_json(*replan_scope_messages(trip, req.request))
+        queue: asyncio.Queue = asyncio.Queue()
+        task = asyncio.create_task(
+            chat_stream_to_queue(
+                glm, *replan_scope_messages(trip, req.request), queue
+            )
+        )
+        scope = None
+        while scope is None:
+            event = await queue.get()
+            if isinstance(event, ThinkingEvent):
+                yield event
+            elif isinstance(event, GLMError):
+                raise event
+            else:
+                scope = event
+        await task
     except GLMError as e:
         yield ErrorEvent(code="GLM_ERROR", message=str(e))
         return
@@ -62,7 +80,20 @@ async def replan_trip(
             )
             try:
                 system, user = day_regen_messages(trip, idx, req.request, feedback)
-                day_draft = await glm.chat_json(system, user)
+                queue = asyncio.Queue()
+                task = asyncio.create_task(
+                    chat_stream_to_queue(glm, system, user, queue)
+                )
+                day_draft = None
+                while day_draft is None:
+                    event = await queue.get()
+                    if isinstance(event, ThinkingEvent):
+                        yield event
+                    elif isinstance(event, GLMError):
+                        raise event
+                    else:
+                        day_draft = event
+                await task
                 new_day = Day.model_validate(day_draft)
             except (GLMError, ValidationError) as e:
                 feedback = [f"第 {idx + 1} 天重新生成失败：{e}"]
