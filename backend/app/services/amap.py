@@ -36,18 +36,17 @@ class AMapService:
         if self._client is None:
             self._client = httpx.AsyncClient(timeout=10.0)
         query = {**params, "key": self._key}
-        for attempt in (1, 2):  # 限流退避：429 或并发超限 infocode 重试一次
+        # 个人 key QPS=3：限流退避两次（1s/2s），覆盖 QPS 与日配额两类 infocode
+        rate_codes = {"10014", "10019", "10020", "10021", "10022", "10044"}
+        for attempt, delay in enumerate((1.0, 2.0), start=1):
             resp = await self._client.get(f"{AMAP_BASE}{path}", params=query)
             resp.raise_for_status()
             data = resp.json()
-            rate_limited = (
-                resp.status_code == 429
-                or data.get("infocode") in {"10019", "10020", "10021"}
-            )
+            rate_limited = resp.status_code == 429 or data.get("infocode") in rate_codes
             if data.get("status") == "1":
                 return data
-            if rate_limited and attempt == 1:
-                await asyncio.sleep(0.5)
+            if rate_limited and attempt <= 2:
+                await asyncio.sleep(delay)
                 continue
             raise AMapError(
                 f"高德接口错误 infocode={data.get('infocode')} info={data.get('info')}"

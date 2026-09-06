@@ -67,6 +67,9 @@ class FakeAMap(AMapService):
             return PoiResult(name=keyword, address="a", longitude=106.5, latitude=29.5, poi_id="P")
         return None
 
+    async def geocode(self, addr: str, city: str = ""):
+        return None
+
 
 async def _collect(req=REQ, glm=None, amap=None):
     return [e async for e in generate_trip(req, glm=glm, amap=amap)]

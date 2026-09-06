@@ -41,27 +41,93 @@ def test_cost_by_type_buckets():
     assert cost_by_type(trip) == {"attraction": 100.0, "meal": 75.0}
 
 
-async def test_poi_tool_returns_resolved_location():
+async def test_poi_tool_cleans_keyword_and_resolves():
     from app.services.amap import PoiResult
-    from app.tools.poi import search_poi
+    from app.tools.poi import clear_cache, search_poi
+
+    clear_cache()
+    seen = []
 
     class FakeAMap:
-        async def search_poi(self, city, keyword):
-            return PoiResult(
-                name=keyword, address="addr", longitude=106.5, latitude=29.5, poi_id="P1"
-            )
+        async def search_poi(self, city, kw):
+            seen.append(kw)
+            if kw == "张老二凉粉":
+                return PoiResult(name=kw, address="addr", longitude=106.5, latitude=29.5, poi_id="P1")
+            return None
 
-    loc = await search_poi("重庆", "洪崖洞", FakeAMap())  # type: ignore[arg-type]
+        async def geocode(self, addr, city):
+            return None
+
+    loc = await search_poi("重庆", "午餐·张老二凉粉（文殊院店）", FakeAMap())  # type: ignore[arg-type]
     assert loc is not None and loc.resolved is True
     assert loc.amap_poi_id == "P1"
+    assert seen == ["张老二凉粉"]  # 清洗名命中，无需再试原名
+
+
+async def test_poi_tool_geocode_fallback_when_poi_misses():
+    from app.tools.poi import clear_cache, search_poi
+
+    clear_cache()
+
+    class FakeAMap:
+        async def search_poi(self, city, kw):
+            return None
+
+        async def geocode(self, addr, city):
+            return (106.5, 29.5)
+
+    loc = await search_poi("重庆", "某无名观景台", FakeAMap())  # type: ignore[arg-type]
+    assert loc is not None and loc.resolved is True
+    assert (loc.longitude, loc.latitude) == (106.5, 29.5)
+
+
+async def test_poi_tool_all_levels_miss_returns_none():
+    from app.tools.poi import clear_cache, search_poi
+
+    clear_cache()
+
+    class FakeAMap:
+        async def search_poi(self, city, kw):
+            return None
+
+        async def geocode(self, addr, city):
+            return None
+
+    assert await search_poi("重庆", "完全不存在", FakeAMap()) is None  # type: ignore[arg-type]
 
 
 async def test_poi_tool_swallows_amap_error():
     from app.services.amap import AMapError
-    from app.tools.poi import search_poi
+    from app.tools.poi import clear_cache, search_poi
+
+    clear_cache()
 
     class BrokenAMap:
         async def search_poi(self, city, keyword):
             raise AMapError("boom")
 
+        async def geocode(self, addr, city):
+            raise AMapError("boom")
+
     assert await search_poi("重庆", "x", BrokenAMap()) is None  # type: ignore[arg-type]
+
+
+async def test_poi_tool_caches_hits():
+    from app.services.amap import PoiResult
+    from app.tools.poi import clear_cache, search_poi
+
+    clear_cache()
+    calls = []
+
+    class FakeAMap:
+        async def search_poi(self, city, kw):
+            calls.append(kw)
+            return PoiResult(name=kw, address="", longitude=106.5, latitude=29.5, poi_id="P")
+
+        async def geocode(self, addr, city):
+            return None
+
+    svc = FakeAMap()
+    await search_poi("重庆", "洪崖洞", svc)  # type: ignore[arg-type]
+    await search_poi("重庆", "洪崖洞", svc)  # type: ignore[arg-type]
+    assert calls == ["洪崖洞"]  # 第二次走缓存

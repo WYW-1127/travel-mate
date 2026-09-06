@@ -20,7 +20,7 @@ from app.services.glm import GLMError, GLMService
 from app.tools.poi import search_poi
 
 MAX_ATTEMPTS = 3  # 首次 + 2 次带反馈重试
-CONCURRENCY = 5
+CONCURRENCY = 3  # 高德个人 key QPS=3
 
 
 async def chat_stream_to_queue(
