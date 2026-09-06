@@ -17,8 +17,7 @@
 - GLM API Key 只在服务端（`.env`），`.env` 已在 `.gitignore`，仓库只放 `.env.example`
 - LLM 输出中不包含经纬度；所有坐标来自高德（GCJ-02）
 - SSE 帧格式：`data: {json}\n\n`，事件类型 `progress` / `complete` / `error`，JSON 键 camelCase（与 spec §4/§5.2 逐字一致）
-- 命令均以 `backend/` 为 cwd；Windows Git Bash 下 venv Python 路径为 `.venv/Scripts/python`
-- 每个任务以 commit 结束（`git -C .. commit` 时注意只 add backend 相关文件）
+- 测试/运行命令以 `backend/` 为 cwd（Windows Git Bash 下 venv Python 路径为 `.venv/Scripts/python`）；**git 命令一律在仓库根目录执行**，add 路径带 `backend/` 前缀
 
 ---
 
@@ -60,7 +59,19 @@ Expected: 显示 pytest 8.x 版本号
 ```python
 import pytest
 from httpx import ASGITransport, AsyncClient
+
+from app.core.config import get_settings
 from app.main import app
+
+
+@pytest.fixture(autouse=True)
+def _isolate_settings(monkeypatch):
+    # 空字符串环境变量优先级高于 .env 文件——保证开发机配了真实 Key 后测试仍离线确定
+    monkeypatch.setenv("GLM_API_KEY", "")
+    monkeypatch.setenv("AMAP_WEB_KEY", "")
+    get_settings.cache_clear()
+    yield
+    get_settings.cache_clear()
 
 
 @pytest.fixture
@@ -1165,7 +1176,7 @@ class GLMService:
 - [ ] **Step 4: 跑测试确认通过**
 
 Run: `.venv/Scripts/python -m pytest tests/test_glm_service.py -v`
-Expected: 8 passed
+Expected: 7 passed
 
 - [ ] **Step 5: Commit**
 
@@ -1336,7 +1347,8 @@ def validate_trip(trip: Trip, check_poi: bool = True) -> ValidationResult:
                     f"第{day_no}天「{prev.name}」与「{cur.name}」时段重叠"
                 )
 
-        for prev, cur in zip(day.activities, day.activities[1:]):            if _resolved(prev) and _resolved(cur):
+        for prev, cur in zip(day.activities, day.activities[1:]):
+            if _resolved(prev) and _resolved(cur):
                 assert prev.location and cur.location
                 d = haversine_km(
                     prev.location.longitude or 0, prev.location.latitude or 0,
@@ -2308,7 +2320,7 @@ async def test_replan_validates_body(client):
 - [ ] **Step 2: 跑测试确认失败**
 
 Run: `.venv/Scripts/python -m pytest tests/test_api_replan.py -v`
-Expected: FAIL——`AttributeError: module 'app.api.trips' has no attribute 'replan_trip'`
+Expected: FAIL——replan 端点尚未注册（404 断言失败），teardown 亦会报 `app.agent.replanner` 模块缺失
 
 - [ ] **Step 3: 实现**
 
@@ -2358,7 +2370,7 @@ curl -N -X POST http://localhost:8000/api/trips/generate \
 - [ ] **Step 4: 全量回归**
 
 Run: `.venv/Scripts/python -m pytest -v`
-Expected: 全部 passed（约 40 项）
+Expected: 全部 passed（全套 56 项）
 
 - [ ] **Step 5: 冒烟（可选，有 Key 时）+ Commit**
 
