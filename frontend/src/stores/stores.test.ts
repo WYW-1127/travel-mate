@@ -1,5 +1,5 @@
 import { createPinia, setActivePinia } from 'pinia'
-import { beforeEach, describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { useCurrentTripStore } from '@/stores/currentTrip'
 import type { Trip } from '@/types/trip'
@@ -105,5 +105,27 @@ describe('currentTrip store', () => {
     store.set(makeTrip())
     store.moveActivity(0, 1, 0)
     expect(store.trip!.days[0].activities[0].name).toBe('火锅')
+  })
+})
+
+describe('generation store', () => {
+  it('HTTP 错误时 phase 转为 error 而不是永远 running', async () => {
+    const { createPinia, setActivePinia: rePinia } = await import('pinia')
+    rePinia(createPinia())
+    const { useGenerationStore } = await import('@/stores/generation')
+    const gen = useGenerationStore()
+
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => new Response('{"detail":"Internal Server Error"}', { status: 500 })),
+    )
+    const done = gen.run('/api/trips/replan', {
+      trip: makeTrip(),
+      request: 'x',
+    })
+    await expect(done).rejects.toThrow()
+    await vi.waitFor(() => expect(gen.phase).toBe('error'))
+    expect(gen.error?.message).toContain('Internal Server Error')
+    vi.unstubAllGlobals()
   })
 })

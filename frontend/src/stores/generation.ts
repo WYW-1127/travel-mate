@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 
-import { postSSE } from '@/api/sse'
+import { postSSE, SSEError } from '@/api/sse'
 import type { GenerateRequest, ReplanRequest, StreamEvent, Trip } from '@/types/trip'
 
 export type GenerationPhase = 'idle' | 'running' | 'done' | 'error'
@@ -41,6 +41,16 @@ export const useGenerationStore = defineStore('generation', {
         }
       })
       this.stop = stop
+      // 网络失败 / HTTP 错误（如后端 500）也要终结 running 态，否则 UI 永久卡住
+      done.catch((e: unknown) => {
+        if (this.phase === 'running') {
+          this.error = {
+            code: e instanceof SSEError ? e.code : 'NETWORK',
+            message: e instanceof Error ? e.message : '网络错误，请重试',
+          }
+          this.phase = 'error'
+        }
+      })
       return done
     },
   },

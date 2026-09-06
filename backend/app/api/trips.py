@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends
 from fastapi.responses import StreamingResponse
 
 from app.agent.planner import generate_trip
+from app.agent.replanner import replan_trip
 from app.schemas.events import ErrorEvent, StreamEvent, encode_event
 from app.schemas.generate import GenerateRequest
 from app.schemas.replan import ReplanRequest
