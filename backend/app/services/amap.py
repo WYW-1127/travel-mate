@@ -34,7 +34,9 @@ class AMapService:
         if not self._key:
             raise AMapError("AMAP_WEB_KEY 未配置（见 backend/.env.example）")
         if self._client is None:
-            self._client = httpx.AsyncClient(timeout=10.0)
+            # trust_env=False：高德是国内服务，直连；否则 Windows 系统代理会把请求
+            # 路由进本地代理（127.0.0.1:7897），代理对 restapi.amap.com 连接失败
+            self._client = httpx.AsyncClient(timeout=10.0, trust_env=False)
         query = {**params, "key": self._key}
         # 个人 key QPS=3：限流退避两次（1s/2s），覆盖 QPS 与日配额两类 infocode
         rate_codes = {"10014", "10019", "10020", "10021", "10022", "10044"}
