@@ -2,6 +2,7 @@ import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { useCurrentTripStore } from '@/stores/currentTrip'
+import { useProfileStore } from '@/stores/profile'
 import type { Trip } from '@/types/trip'
 import { useTripsStore } from '@/stores/trips'
 
@@ -105,6 +106,25 @@ describe('currentTrip store', () => {
     store.set(makeTrip())
     store.moveActivity(0, 1, 0)
     expect(store.trip!.days[0].activities[0].name).toBe('火锅')
+  })
+})
+
+describe('profile store', () => {
+  it('addAll 去重/截断 30 字/上限 20 条并持久化', () => {
+    const profile = useProfileStore()
+    profile.addAll(['带娃', '带娃', '  不去网红店  ', ''])
+    expect(profile.items).toEqual(['带娃', '不去网红店'])
+    for (let i = 0; i < 25; i++) profile.addAll([`偏好${i}`])
+    expect(profile.items.length).toBe(20)
+    expect(JSON.parse(localStorage.getItem('travelmate.profile')!)).toHaveLength(20)
+  })
+
+  it('remove 删除单条', () => {
+    const profile = useProfileStore()
+    profile.addAll(['a', 'b'])
+    profile.remove(0)
+    expect(profile.items).toEqual(['b'])
+    expect(JSON.parse(localStorage.getItem('travelmate.profile')!)).toEqual(['b'])
   })
 })
 
