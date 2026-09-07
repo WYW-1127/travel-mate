@@ -173,3 +173,14 @@ async def test_checkpoint_persists_terminal_state(tmp_path):
         snap = await graph.aget_state({"configurable": {"thread_id": thread}})
         assert snap is not None
         assert snap.values["done"]["trip"].version == 2
+
+
+async def test_profile_injected_into_system_prompt():
+    glm = FakeGLM([ToolRound(content=json.dumps({"reply": "好", "days": []}), tool_calls=[])])
+    req = ChatRequest.model_validate(
+        {"trip": TRIP_DATA, "message": "改一下", "profile": ["带5岁孩子出行", "  "]}
+    )
+    events = [e async for e in chat_turn(req, glm=glm, amap=FakeAMap(), checkpoint_db=None)]
+    assert events[-1].type == "complete"
+    system = glm.calls[0][0]["content"]
+    assert "偏好档案" in system and "带5岁孩子出行" in system

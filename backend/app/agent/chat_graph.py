@@ -57,6 +57,7 @@ class _ChatOutcome(CamelModel):
 class ChatState(TypedDict):
     trip: Trip
     user_message: str
+    profile: list[str]
     glm_messages: list[dict]
     attempt: int
     rounds: int
@@ -65,7 +66,7 @@ class ChatState(TypedDict):
     done: dict | None  # {"trip": Trip} 或 {"error": [code, message]}；非 None 即终态
 
 
-def _system_prompt(trip: Trip) -> str:
+def _system_prompt(trip: Trip, profile: list[str]) -> str:
     trip_json = json.dumps(trip.model_dump(by_alias=True, exclude={"chat"}), ensure_ascii=False)
     return f"""你是用户的旅行规划助理，通过输出修改后的行程来响应用户需求。
 
@@ -76,7 +77,7 @@ def _system_prompt(trip: Trip) -> str:
 1. 涉及新地点时先调工具定位：search_poi 优先，搜不到用 geocode；严禁编造经纬度。
 2. 用户只是提问、不需要改行程时，days 返回 []，只在 reply 里回答。
 3. 需要修改时，days 里只放受影响的天：{{"index": 天序号从0开始, "title": 当天主题, "activities": [活动结构与你看到的行程一致，含 name/type/startTime/endTime/cost/notes/location]}}；未提到的天不要输出。
-4. 安排要尊重用户偏好：{trip.preferences or "（无记录）"}。
+4. 用户长期偏好档案（跨行程有效，优先级最高）：{"；".join(profile) if profile else "（无）"}。同时尊重本次行程的偏好：{trip.preferences or "（无记录）"}。
 5. 最终只输出一个 JSON 对象：{{"reply": "给用户的回复，说清楚改了什么、为什么", "days": [...]}}"""
 
 
@@ -260,14 +261,16 @@ async def chat_turn(
     glm = glm or GLMService(thinking_effort=req.thinking_effort)
     amap = amap or AMapService()
     trip = req.trip.model_copy(deep=True)
+    profile = [p.strip()[:30] for p in (req.profile or []) if p.strip()][:20]
 
     yield ProgressEvent(stage=ProgressStage.analyze, message="正在理解你的需求")
 
     initial: ChatState = {
         "trip": trip,
         "user_message": req.message,
+        "profile": profile,
         "glm_messages": [
-            {"role": "system", "content": _system_prompt(trip)},
+            {"role": "system", "content": _system_prompt(trip, profile)},
             *_history_messages(trip),
             {"role": "user", "content": req.message},
         ],
