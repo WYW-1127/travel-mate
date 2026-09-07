@@ -27,7 +27,7 @@ class ToolRound:
 
     content: str
     tool_calls: list[ToolCall]
-    reasoning: str
+    reasoning: str = ""
 
 
 def extract_json(text: str) -> dict:
