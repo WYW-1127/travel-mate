@@ -160,6 +160,14 @@ def test_draft_to_trip_assigns_unique_activity_ids():
     assert len(ids) == len(set(ids))
 
 
+def test_draft_to_trip_keeps_preferences():
+    req = GenerateRequest.model_validate(
+        {"destination": "重庆", "days": 2, "preferences": "带娃"}
+    )
+    trip = draft_to_trip(GOOD_DRAFT, req)
+    assert trip.preferences == "带娃"
+
+
 def test_draft_to_trip_rejects_garbage():
     with pytest.raises(ValidationError):
         draft_to_trip({"days": "不是列表"}, REQ)

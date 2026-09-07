@@ -86,6 +86,7 @@ def draft_to_trip(draft: dict, req: GenerateRequest) -> Trip:
         "startDate": req.start_date,
         "travelers": req.travelers.model_dump(by_alias=True),
         "budgetLimit": req.budget_limit,
+        "preferences": req.preferences or "",
         "version": 1,
     }
     trip = Trip.model_validate(data)

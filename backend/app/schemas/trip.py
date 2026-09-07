@@ -1,4 +1,5 @@
 from enum import Enum
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 from pydantic.alias_generators import to_camel
@@ -79,6 +80,12 @@ class Travelers(CamelModel):
     children: int = Field(default=0, ge=0)
 
 
+class ChatMessage(CamelModel):
+    role: Literal["user", "assistant"]
+    content: str = ""
+    ts: str = ""  # ISO 本地时间，前端展示用
+
+
 class Trip(CamelModel):
     id: str = ""
     title: str = ""
@@ -91,3 +98,7 @@ class Trip(CamelModel):
     warnings: list[str] = Field(default_factory=list)
     # 最近一次生成/重规划的 AI 思考过程（前端写入，随行程持久化）
     thinking: str = ""
+    # 生成时的偏好（带娃、不去网红店），对话式修改时注入提示词
+    preferences: str = ""
+    # 对话历史随行程持久化（≤50 条，超出由写入方裁剪）
+    chat: list[ChatMessage] = Field(default_factory=list)

@@ -1,3 +1,5 @@
+import json
+
 import pytest
 from pydantic import ValidationError
 
@@ -69,3 +71,20 @@ def test_trip_thinking_field_round_trips():
     trip = Trip.model_validate(data)
     assert trip.thinking == "推理过程……"
     assert Trip.model_validate(trip.model_dump(by_alias=True)).thinking == "推理过程……"
+
+
+def test_trip_chat_and_preferences_roundtrip():
+    trip = Trip.model_validate(
+        {
+            "destination": "重庆",
+            "preferences": "带娃、不去网红店",
+            "chat": [{"role": "user", "content": "别太赶", "ts": "2026-09-07T10:00:00"}],
+        }
+    )
+    assert trip.preferences == "带娃、不去网红店"
+    assert trip.chat[0].role == "user"
+    dumped = json.loads(trip.model_dump_json(by_alias=True))
+    assert dumped["chat"][0]["role"] == "user"
+    # 旧行程无新字段可正常解析（向后兼容）
+    old = Trip.model_validate({"destination": "重庆"})
+    assert old.preferences == "" and old.chat == []
