@@ -3,7 +3,7 @@ from collections.abc import AsyncIterator
 from fastapi import APIRouter, Depends
 from fastapi.responses import StreamingResponse
 
-from app.agent.chat_agent import chat_turn
+from app.agent.chat_graph import chat_turn
 from app.agent.planner import generate_trip
 from app.agent.replanner import replan_trip
 from app.schemas.chat import ChatRequest

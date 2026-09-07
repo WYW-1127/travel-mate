@@ -1,6 +1,6 @@
 import json
 
-from app.agent.chat_agent import chat_turn
+from app.agent.chat_graph import chat_turn
 from app.schemas.chat import ChatRequest
 from app.services.amap import AMapService, PoiResult
 from app.services.glm import GLMError, GLMService, ToolCall, ToolRound
@@ -127,7 +127,7 @@ async def test_invalid_days_shape_retries_with_feedback():
 
 
 async def test_rounds_cap_appends_force_finish(monkeypatch):
-    import app.agent.chat_agent as mod
+    import app.agent.chat_graph as mod
     monkeypatch.setattr(mod, "MAX_ROUNDS", 2)
     glm = FakeGLM([
         ToolRound(content="", tool_calls=[SEARCH_CALL]),
@@ -144,3 +144,13 @@ async def test_glm_error_yields_error_event():
     events = [e async for e in chat_turn(_req(), glm=glm, amap=FakeAMap())]
     assert events[-1].type == "error"
     assert events[-1].code == "GLM_ERROR"
+
+
+def test_graph_compiles_and_mermaid_contains_nodes():
+    from app.agent.chat_graph import build_chat_graph
+
+    graph = build_chat_graph()
+    mermaid = graph.get_graph().draw_mermaid()
+    assert "agent_call" in mermaid
+    assert "execute_tools" in mermaid
+    assert "finalize" in mermaid

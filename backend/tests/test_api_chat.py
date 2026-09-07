@@ -9,7 +9,7 @@ def _install():
     async def fake_chat(req, glm=None, amap=None):
         yield CompleteEvent(trip=req.trip.model_copy(update={"version": 2}))
 
-    import app.agent.chat_agent as chat_mod
+    import app.agent.chat_graph as chat_mod
     import app.api.trips as trips_api
 
     trips_api.chat_turn = fake_chat
@@ -42,4 +42,4 @@ async def test_chat_wiring_import_present():
 
     import app.api.trips as trips_api
 
-    assert "from app.agent.chat_agent import chat_turn" in inspect.getsource(trips_api)
+    assert "from app.agent.chat_graph import chat_turn" in inspect.getsource(trips_api)
