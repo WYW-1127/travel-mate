@@ -10,8 +10,10 @@ import json
 import uuid
 from collections.abc import AsyncIterator
 from datetime import datetime
+from pathlib import Path
 from typing import TypedDict
 
+from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
 from langgraph.config import get_stream_writer
 from langgraph.graph import END, START, StateGraph
 from pydantic import Field, ValidationError
@@ -36,6 +38,7 @@ MAX_ROUNDS = 8  # 单轮对话内「模型↔工具」循环上限
 MAX_ATTEMPTS = 3  # 最终输出校验不过的带反馈重试（首次 + 2 次）
 HISTORY_LIMIT = 20  # 发给模型的对话历史上限
 CHAT_LIMIT = 50  # 行程内保存的对话上限
+DEFAULT_CHECKPOINT_DB = "data/checkpoints.db"  # 相对 backend/ 运行目录
 
 
 class _DayEdit(CamelModel):
@@ -252,6 +255,7 @@ async def chat_turn(
     req: ChatRequest,
     glm: GLMService | None = None,
     amap: AMapService | None = None,
+    checkpoint_db: str | None = DEFAULT_CHECKPOINT_DB,
 ) -> AsyncIterator[StreamEvent]:
     glm = glm or GLMService(thinking_effort=req.thinking_effort)
     amap = amap or AMapService()
@@ -282,5 +286,12 @@ async def chat_turn(
             "executor": ToolExecutor(trip.destination, amap),
         }
     }
-    async for ev in _run(build_chat_graph(), initial, config):
-        yield ev
+    if checkpoint_db:
+        Path(checkpoint_db).parent.mkdir(parents=True, exist_ok=True)
+        async with AsyncSqliteSaver.from_conn_string(checkpoint_db) as saver:
+            graph = build_chat_graph(checkpointer=saver)
+            async for ev in _run(graph, initial, config):
+                yield ev
+    else:
+        async for ev in _run(build_chat_graph(), initial, config):
+            yield ev

@@ -83,7 +83,7 @@ async def test_tool_call_round_edits_day_and_appends_chat():
         ToolRound(content="", tool_calls=[SEARCH_CALL]),
         ToolRound(content=json.dumps(GOOD_EDIT, ensure_ascii=False), tool_calls=[]),
     ])
-    events = [e async for e in chat_turn(_req(), glm=glm, amap=FakeAMap())]
+    events = [e async for e in chat_turn(_req(), glm=glm, amap=FakeAMap(), checkpoint_db=None)]
 
     complete = events[-1]
     assert complete.type == "complete"
@@ -105,7 +105,7 @@ async def test_pure_chat_keeps_trip_untouched():
     glm = FakeGLM([
         ToolRound(content=json.dumps({"reply": "人均约 375 元", "days": []}), tool_calls=[]),
     ])
-    events = [e async for e in chat_turn(_req("人均要花多少钱"), glm=glm, amap=FakeAMap())]
+    events = [e async for e in chat_turn(_req("人均要花多少钱"), glm=glm, amap=FakeAMap(), checkpoint_db=None)]
     trip = events[-1].trip
     assert trip.version == 1
     assert trip.days[1].activities[0].name == "灵隐飞来峰景区"
@@ -119,7 +119,7 @@ async def test_invalid_days_shape_retries_with_feedback():
         ToolRound(content=json.dumps(bad, ensure_ascii=False), tool_calls=[]),
         ToolRound(content=json.dumps(GOOD_EDIT, ensure_ascii=False), tool_calls=[]),
     ])
-    events = [e async for e in chat_turn(_req(), glm=glm, amap=FakeAMap())]
+    events = [e async for e in chat_turn(_req(), glm=glm, amap=FakeAMap(), checkpoint_db=None)]
     assert events[-1].type == "complete"
     assert len(glm.calls) == 2
     last_user = glm.calls[1][-1]
@@ -134,14 +134,14 @@ async def test_rounds_cap_appends_force_finish(monkeypatch):
         ToolRound(content="", tool_calls=[SEARCH_CALL]),
         ToolRound(content=json.dumps({"reply": "好", "days": []}), tool_calls=[]),
     ])
-    events = [e async for e in chat_turn(_req(), glm=glm, amap=FakeAMap())]
+    events = [e async for e in chat_turn(_req(), glm=glm, amap=FakeAMap(), checkpoint_db=None)]
     assert events[-1].type == "complete"
     assert any("已达上限" in m.get("content", "") for m in glm.calls[2] if m.get("role") == "user")
 
 
 async def test_glm_error_yields_error_event():
     glm = FakeGLM([GLMError("GLM 连接失败")])
-    events = [e async for e in chat_turn(_req(), glm=glm, amap=FakeAMap())]
+    events = [e async for e in chat_turn(_req(), glm=glm, amap=FakeAMap(), checkpoint_db=None)]
     assert events[-1].type == "error"
     assert events[-1].code == "GLM_ERROR"
 
@@ -154,3 +154,22 @@ def test_graph_compiles_and_mermaid_contains_nodes():
     assert "agent_call" in mermaid
     assert "execute_tools" in mermaid
     assert "finalize" in mermaid
+
+
+async def test_checkpoint_persists_terminal_state(tmp_path):
+    from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
+
+    from app.agent.chat_graph import build_chat_graph, thread_id_of
+    from app.schemas.trip import Trip
+
+    db = tmp_path / "ckpt.db"
+    glm = FakeGLM([ToolRound(content=json.dumps(GOOD_EDIT, ensure_ascii=False), tool_calls=[])])
+    events = [e async for e in chat_turn(_req(), glm=glm, amap=FakeAMap(), checkpoint_db=str(db))]
+    assert events[-1].type == "complete"
+
+    thread = thread_id_of(Trip.model_validate(TRIP_DATA))
+    async with AsyncSqliteSaver.from_conn_string(str(db)) as saver:
+        graph = build_chat_graph(checkpointer=saver)
+        snap = await graph.aget_state({"configurable": {"thread_id": thread}})
+        assert snap is not None
+        assert snap.values["done"]["trip"].version == 2
