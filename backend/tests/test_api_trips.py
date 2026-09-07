@@ -9,7 +9,7 @@ from app.main import app
 from app.schemas.events import CompleteEvent, ProgressEvent
 from app.services.amap import AMapService, PoiResult
 
-PLANNER = "app.agent.planner.generate_trip"
+PLANNER = "app.agent.generation_graph.generate_trip"
 
 
 
@@ -20,7 +20,7 @@ class StubAMap(AMapService):
 @pytest.fixture(autouse=True)
 def _restore():
     yield
-    import app.agent.planner as planner_mod
+    import app.agent.generation_graph as planner_mod
     import app.api.trips as trips_api
 
     trips_api.generate_trip = planner_mod.generate_trip
@@ -89,7 +89,8 @@ async def test_generate_respects_request_thinking_effort(client, monkeypatch):
                 {
                     "title": "d1",
                     "activities": [
-                        {"name": "x", "type": "attraction", "startTime": "09:00", "endTime": "10:00", "cost": 0}
+                        {"name": "x", "type": "attraction", "startTime": "09:00", "endTime": "10:00", "cost": 0,
+                         "location": {"name": "x", "resolved": True, "longitude": 106.5, "latitude": 29.5}}
                     ],
                 }
             ],
