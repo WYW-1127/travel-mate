@@ -72,11 +72,12 @@ async def test_generate_validates_request(client):
     assert resp.status_code == 422
 
 
-async def test_generate_respects_request_thinking_effort(client, monkeypatch):
+async def test_generate_respects_request_thinking_effort(client, monkeypatch, tmp_path):
     """防回归：请求级 thinking 必须生效（曾被 get_glm 单例依赖掩盖）。"""
     import app.core.config as config_mod
 
     monkeypatch.setenv("GLM_API_KEY", "test-key")
+    monkeypatch.setenv("CHECKPOINT_DB", str(tmp_path / "ckpt.db"))  # 测试不污染生产检查点库
     config_mod.get_settings.cache_clear()
 
     captured: list[dict] = []
@@ -121,3 +122,4 @@ async def test_generate_respects_request_thinking_effort(client, monkeypatch):
         )
         assert captured[-1]["thinking"] == {"type": "enabled", "effort": "high"}
         assert '"type":"complete"' in resp2.text
+    config_mod.get_settings.cache_clear()

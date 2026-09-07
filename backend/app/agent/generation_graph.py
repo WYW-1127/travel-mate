@@ -18,6 +18,7 @@ from pydantic import ValidationError
 from app.agent.chat_tools import ToolExecutor, build_tools
 from app.agent.planner import draft_to_trip
 from app.agent.validator import validate_trip
+from app.core.config import get_settings
 from app.schemas.events import (
     CompleteEvent,
     ErrorEvent,
@@ -33,7 +34,7 @@ from app.services.glm import GLMError, GLMService
 MAX_ROUNDS = 10  # 「模型↔工具」循环上限
 MAX_ATTEMPTS = 3  # 校验不过的带反馈重试（首次 + 2 次）
 MAX_TOOL_CALLS = 40  # 生成定位调用配额（进程缓存对重复关键词去重）
-DEFAULT_CHECKPOINT_DB = "data/checkpoints.db"
+DEFAULT_CHECKPOINT_DB = "default"  # 运行时从 settings.checkpoint_db 解析
 
 
 class GenState(TypedDict):
@@ -240,6 +241,8 @@ async def generate_trip(
             "executor": ToolExecutor(req.destination, amap, max_calls=MAX_TOOL_CALLS),
         }
     }
+    if checkpoint_db == "default":
+        checkpoint_db = get_settings().checkpoint_db
     if checkpoint_db:
         Path(checkpoint_db).parent.mkdir(parents=True, exist_ok=True)
         async with AsyncSqliteSaver.from_conn_string(checkpoint_db) as saver:

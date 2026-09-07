@@ -22,6 +22,7 @@ from app.agent.chat_tools import ToolExecutor, build_tools
 from app.agent.planner import assign_activity_ids
 from app.agent.validator import validate_trip
 from app.schemas.chat import ChatRequest
+from app.core.config import get_settings
 from app.schemas.events import (
     CompleteEvent,
     ErrorEvent,
@@ -38,7 +39,7 @@ MAX_ROUNDS = 8  # 单轮对话内「模型↔工具」循环上限
 MAX_ATTEMPTS = 3  # 最终输出校验不过的带反馈重试（首次 + 2 次）
 HISTORY_LIMIT = 20  # 发给模型的对话历史上限
 CHAT_LIMIT = 50  # 行程内保存的对话上限
-DEFAULT_CHECKPOINT_DB = "data/checkpoints.db"  # 相对 backend/ 运行目录
+DEFAULT_CHECKPOINT_DB = "default"  # 运行时从 settings.checkpoint_db 解析
 
 
 class _DayEdit(CamelModel):
@@ -289,6 +290,8 @@ async def chat_turn(
             "executor": ToolExecutor(trip.destination, amap),
         }
     }
+    if checkpoint_db == "default":
+        checkpoint_db = get_settings().checkpoint_db
     if checkpoint_db:
         Path(checkpoint_db).parent.mkdir(parents=True, exist_ok=True)
         async with AsyncSqliteSaver.from_conn_string(checkpoint_db) as saver:

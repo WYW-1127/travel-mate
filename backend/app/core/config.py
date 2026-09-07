@@ -15,6 +15,8 @@ class Settings(BaseSettings):
     glm_thinking_effort: str = "high"
     amap_web_key: str = ""
     cors_origins: str = "http://localhost:5173"
+    # LangGraph 检查点库（相对 backend/ 运行目录）；测试应指向临时文件
+    checkpoint_db: str = "data/checkpoints.db"
 
     @property
     def has_glm(self) -> bool:
