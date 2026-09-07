@@ -4,8 +4,8 @@ import { useRoute } from 'vue-router'
 
 import AMapView, { type MapPoint } from '@/components/AMapView.vue'
 import BudgetPanel from '@/components/BudgetPanel.vue'
+import ChatPanel from '@/components/ChatPanel.vue'
 import DayTimeline from '@/components/DayTimeline.vue'
-import ReplanBox from '@/components/ReplanBox.vue'
 import ThinkingPanel from '@/components/ThinkingPanel.vue'
 import { useCurrentTripStore } from '@/stores/currentTrip'
 import { useTripsStore } from '@/stores/trips'
@@ -89,7 +89,7 @@ function printPdf() {
     </div>
 
     <div class="no-print mb-4">
-      <ReplanBox />
+      <ChatPanel />
     </div>
 
     <!-- 历史思考过程：随行程持久化，折叠可展开 -->

@@ -42,6 +42,16 @@ export interface Trip {
   warnings?: string[]
   /** 最近一次生成/重规划的 AI 思考过程，详情页可展开查看 */
   thinking?: string
+  /** 生成时的偏好（带娃、不去网红店），对话修改时服务端注入提示词 */
+  preferences?: string
+  /** 与 AI 的对话历史，随行程持久化 */
+  chat?: ChatMessage[]
+}
+
+export interface ChatMessage {
+  role: 'user' | 'assistant'
+  content: string
+  ts?: string
 }
 
 export interface GenerateRequest {
@@ -58,6 +68,12 @@ export interface GenerateRequest {
 export interface ReplanRequest {
   trip: Trip
   request: string
+  thinking_effort?: 'low' | 'high'
+}
+
+export interface ChatRequest {
+  trip: Trip
+  message: string
   thinking_effort?: 'low' | 'high'
 }
 
