@@ -3,8 +3,10 @@ from collections.abc import AsyncIterator
 from fastapi import APIRouter, Depends
 from fastapi.responses import StreamingResponse
 
+from app.agent.chat_agent import chat_turn
 from app.agent.planner import generate_trip
 from app.agent.replanner import replan_trip
+from app.schemas.chat import ChatRequest
 from app.schemas.events import ErrorEvent, StreamEvent, encode_event
 from app.schemas.generate import GenerateRequest
 from app.schemas.replan import ReplanRequest
@@ -51,6 +53,18 @@ async def replan(
 ) -> StreamingResponse:
     return StreamingResponse(
         _sse(replan_trip(req, glm=GLMService(thinking_effort=req.thinking_effort), amap=amap)),
+        media_type="text/event-stream",
+        headers=SSE_HEADERS,
+    )
+
+
+@router.post("/chat")
+async def chat(
+    req: ChatRequest,
+    amap: AMapService = Depends(get_amap),
+) -> StreamingResponse:
+    return StreamingResponse(
+        _sse(chat_turn(req, glm=GLMService(thinking_effort=req.thinking_effort), amap=amap)),
         media_type="text/event-stream",
         headers=SSE_HEADERS,
     )
