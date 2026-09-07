@@ -75,6 +75,8 @@ export interface ChatRequest {
   trip: Trip
   message: string
   thinking_effort?: 'low' | 'high'
+  /** 用户长期偏好档案，服务端注入系统提示词 */
+  profile?: string[]
 }
 
 export type ProgressStage = 'analyze' | 'plan' | 'enrich' | 'validate'

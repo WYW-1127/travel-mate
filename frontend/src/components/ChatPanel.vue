@@ -1,14 +1,17 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 
+import { extractPreferences } from '@/api/preferences'
 import ThinkingPanel from '@/components/ThinkingPanel.vue'
 import { useCurrentTripStore } from '@/stores/currentTrip'
 import { useGenerationStore } from '@/stores/generation'
+import { useProfileStore } from '@/stores/profile'
 import { useTripsStore } from '@/stores/trips'
 
 const store = useCurrentTripStore()
 const generation = useGenerationStore()
 const trips = useTripsStore()
+const profile = useProfileStore()
 
 const draft = ref('')
 const thinking = ref(true)
@@ -16,9 +19,10 @@ const thinking = ref(true)
 async function send() {
   if (!draft.value.trim() || !store.trip || generation.phase === 'running') return
   const current = store.trip
+  const message = draft.value.trim()
   const done = generation.run(
     '/api/trips/chat',
-    { trip: current, message: draft.value.trim(), thinking_effort: thinking.value ? 'high' : 'low' },
+    { trip: current, message, thinking_effort: thinking.value ? 'high' : 'low', profile: profile.items },
   )
   await done
   if (generation.phase === 'done' && generation.result) {
@@ -28,6 +32,10 @@ async function send() {
     trips.upsert(generation.result)
     draft.value = ''
   }
+  // 静默抽取长期偏好入档案，失败不影响主流程
+  extractPreferences(message)
+    .then((items) => profile.addAll(items))
+    .catch(() => {})
 }
 
 function undo() {

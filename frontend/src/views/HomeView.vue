@@ -1,11 +1,14 @@
 <script setup lang="ts">
-import { reactive, ref } from 'vue'
+import { onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 
+import { extractPreferences } from '@/api/preferences'
 import { useGenerationStore } from '@/stores/generation'
+import { useProfileStore } from '@/stores/profile'
 
 const router = useRouter()
 const generation = useGenerationStore()
+const profile = useProfileStore()
 
 const form = reactive({
   destination: '',
@@ -19,12 +22,25 @@ const form = reactive({
 })
 const error = ref('')
 
+onMounted(() => {
+  // 偏好档案预填：可见可改，直接落在输入框里
+  if (!form.preferences && profile.items.length) {
+    form.preferences = profile.items.join('；')
+  }
+})
+
 function submit() {
   if (!form.destination.trim()) {
     error.value = '请填写目的地'
     return
   }
   error.value = ''
+  if (form.preferences.trim()) {
+    // 静默抽取长期偏好入档案，失败不影响生成
+    extractPreferences(form.preferences.trim())
+      .then((items) => profile.addAll(items))
+      .catch(() => {})
+  }
   generation.run('/api/trips/generate', {
     destination: form.destination.trim(),
     days: form.days,
@@ -113,6 +129,18 @@ function submit() {
           class="w-full rounded-lg border border-slate-300 px-3 py-2 focus:border-teal-500 focus:outline-none"
         ></textarea>
       </label>
+
+      <div v-if="profile.items.length" class="flex flex-wrap items-center gap-1.5">
+        <span class="text-xs text-slate-400">记住的偏好：</span>
+        <span
+          v-for="(p, i) in profile.items"
+          :key="p"
+          class="flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-600"
+        >
+          {{ p }}
+          <button type="button" class="text-slate-400 hover:text-red-500" @click="profile.remove(i)">×</button>
+        </span>
+      </div>
 
       <p v-if="error" class="text-sm text-red-600">{{ error }}</p>
 
