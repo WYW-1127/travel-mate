@@ -76,7 +76,7 @@ def _system_prompt(trip: Trip, profile: list[str]) -> str:
 {trip_json}
 
 规则：
-1. 涉及新地点时先调工具定位：search_poi 优先，搜不到用 geocode；严禁编造经纬度。
+1. 涉及新地点时先调工具定位：search_poi 优先，搜不到用 geocode；严禁编造经纬度。重点景点可用 poi_detail 查营业时间/评分（poi_id 来自 search_poi），可用 weather 查目的地天气。
 2. 用户只是提问、不需要改行程时，days 返回 []，只在 reply 里回答。
 3. 需要修改时，days 里只放受影响的天：{{"index": 天序号从0开始, "title": 当天主题, "activities": [活动结构与你看到的行程一致，含 name/type/startTime/endTime/cost/notes/location]}}；未提到的天不要输出。
 4. 用户长期偏好档案（跨行程有效，优先级最高）：{"；".join(profile) if profile else "（无）"}。同时尊重本次行程的偏好：{trip.preferences or "（无记录）"}。

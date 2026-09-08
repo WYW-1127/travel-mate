@@ -65,7 +65,8 @@ def _system_prompt(req: GenerateRequest) -> str:
 2. 先想好行程要去的全部地点，然后在同一轮里一次性并行调用工具定位全部地点（不要逐个往返查询）；拿到定位结果后立即输出最终 JSON。
 3. 严禁编造经纬度；搜索失败的地点可更换关键词重查一次，仍失败则 location 填 {{"name": "地点名", "resolved": false}}。
 4. type 取值：attraction | meal | transport | hotel | shopping；cost 是人均预估（元），免费填 0。
-5. 最终只输出一个 JSON 对象（结构如下，location 用定位返回的规范名/地址/坐标）：
+5. 先调用 weather 查看目的地天气：雨天/酷热优先安排室内活动，把户外放在天气好的时段。重点景点可用 poi_detail 核实营业时间与门票（poi_id 来自 search_poi），查不到的信息按常识预估，不要编造。
+6. 最终只输出一个 JSON 对象（结构如下，location 用定位返回的规范名/地址/坐标）：
 {{"title": "行程标题", "days": [{{"title": "当天主题", "activities": [{{"name": "地点名", "type": "attraction", "startTime": "09:30", "endTime": "12:00", "cost": 0, "notes": "提示可空", "location": {{"name": "…", "address": "…", "longitude": 120.1, "latitude": 30.2, "resolved": true}}}}]}}]}}"""
 
 
