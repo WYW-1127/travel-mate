@@ -1,5 +1,17 @@
 import json
 
+import pytest
+
+
+@pytest.fixture(autouse=True)
+def _no_checkpoint(monkeypatch):
+    monkeypatch.setenv("CHECKPOINT_DB", "")
+    import app.core.config as config_mod
+
+    config_mod.get_settings.cache_clear()
+    yield
+    config_mod.get_settings.cache_clear()
+
 from app.agent.generation_graph import generate_trip
 from app.schemas.generate import GenerateRequest
 from app.schemas.trip import Trip

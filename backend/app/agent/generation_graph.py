@@ -219,7 +219,7 @@ async def generate_trip(
     req: GenerateRequest,
     glm: GLMService | None = None,
     amap: AMapService | None = None,
-    checkpoint_db: str | None = DEFAULT_CHECKPOINT_DB,
+    checkpoint_db: str | None = None,  # None=不落检查点（默认）；显式路径才启用
 ) -> AsyncIterator[StreamEvent]:
     glm = glm or GLMService(thinking_effort=req.thinking_effort)
     amap = amap or AMapService()

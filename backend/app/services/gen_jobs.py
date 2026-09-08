@@ -10,6 +10,7 @@ from dataclasses import dataclass, field
 
 from app.agent.generation_graph import generate_trip
 from app.schemas.events import ErrorEvent, StreamEvent
+from app.core.config import get_settings
 from app.schemas.generate import GenerateRequest
 from app.services.amap import AMapService
 from app.services.glm import GLMService
@@ -81,7 +82,9 @@ class GenJobManager:
         self, job: GenJob, req: GenerateRequest, glm: GLMService, amap: AMapService
     ) -> None:
         try:
-            async for ev in generate_trip(req, glm=glm, amap=amap):
+            async for ev in generate_trip(
+                req, glm=glm, amap=amap, checkpoint_db=get_settings().checkpoint_db
+            ):
                 job.publish(ev)
         except asyncio.CancelledError:
             raise
