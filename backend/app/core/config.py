@@ -20,6 +20,8 @@ class Settings(BaseSettings):
     checkpoint_db: str = ""
     # POI 落盘缓存库（TTL 7 天，重复定位零 API）；空 = 纯内存
     poi_cache_db: str = "data/poi_cache.db"
+    # 行程缓存库（相似请求秒回，LRU 200 条）；空 = 禁用
+    trip_cache_db: str = "data/trip_cache.db"
 
     @property
     def has_glm(self) -> bool:

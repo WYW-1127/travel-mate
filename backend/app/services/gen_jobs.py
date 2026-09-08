@@ -9,8 +9,10 @@ from collections.abc import AsyncIterator
 from dataclasses import dataclass, field
 
 from app.agent.generation_graph import generate_trip
-from app.schemas.events import ErrorEvent, StreamEvent
+from app.schemas.events import CompleteEvent, ErrorEvent, ProgressEvent, ProgressStage, StreamEvent
+from app.schemas.events import ProgressEvent, ProgressStage
 from app.schemas.generate import GenerateRequest
+from app.services import trip_cache
 from app.services.amap import AMapService
 from app.services.glm import GLMService
 
@@ -80,10 +82,26 @@ class GenJobManager:
     async def _run(
         self, job: GenJob, req: GenerateRequest, glm: GLMService, amap: AMapService
     ) -> None:
+        cached = trip_cache.load(req)
+        if cached is not None:
+            # 相似行程命中：秒回（含历史思考过程），用户可用对话继续微调
+            job.publish(ProgressEvent(
+                stage=ProgressStage.plan,
+                message="命中相似行程，直接为你呈现（可用对话继续调整）",
+            ))
+            job.publish(CompleteEvent(trip=cached))
+            job.status = "done"
+            return
+        thinking_parts: list[str] = []
         try:
             # 检查点不启用：内存事件缓冲即重连通道；多任务并发写同一 sqlite 会锁冲突
             async for ev in generate_trip(req, glm=glm, amap=amap):
                 job.publish(ev)
+                if ev.type == "thinking":
+                    thinking_parts.append(ev.content)
+                elif ev.type == "complete":
+                    ev.trip.thinking = "".join(thinking_parts)  # 思考随缓存持久化
+                    trip_cache.save(req, ev.trip)
         except asyncio.CancelledError:
             raise
         except Exception as e:  # noqa: BLE001 —— 任务内意外错误统一转 error 事件
