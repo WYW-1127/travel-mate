@@ -6,6 +6,7 @@ START → agent_call ⇄ execute_tools（有工具调用时循环，≤MAX_ROUND
                 →（校验失败且未耗尽重试）agent_call
 对外的 chat_turn 签名与 SSE 事件协议与迁移前完全一致。"""
 
+import asyncio
 import json
 import uuid
 from collections.abc import AsyncIterator
@@ -160,13 +161,19 @@ async def execute_tools(state: ChatState, config) -> dict:
     cfg = config["configurable"]
     executor: ToolExecutor = cfg["executor"]
     writer = get_stream_writer()
-    msgs = list(state["glm_messages"])
-    for call in state["pending_calls"] or []:
+    calls = state["pending_calls"] or []
+
+    async def one(call: dict):
         label = _tool_label(call["arguments"])
         if label and writer:
             writer({"kind": "progress", "message": f"正在定位：{label}"})
-        result = await executor.execute(call["name"], call["arguments"])
-        msgs.append({"role": "tool", "tool_call_id": call["id"], "content": result})
+        # 个人 key QPS=3：并发执行但限 3 路
+        async with asyncio.Semaphore(3):
+            return call["id"], await executor.execute(call["name"], call["arguments"])
+
+    results = await asyncio.gather(*(one(c) for c in calls))
+    msgs = list(state["glm_messages"])
+    msgs.extend({"role": "tool", "tool_call_id": cid, "content": result} for cid, result in results)
     if state["rounds"] >= MAX_ROUNDS:
         msgs.append({"role": "user", "content": "工具调用已达上限，立即基于已有信息输出最终 JSON。"})
     return {"glm_messages": msgs, "pending_calls": None}

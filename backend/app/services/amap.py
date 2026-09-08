@@ -18,6 +18,21 @@ class PoiResult(BaseModel):
     longitude: float
     latitude: float
     poi_id: str = ""
+    cityname: str = ""  # 结果归属城市（如 深圳市），用于城市归属校验
+
+
+def _city_ok(result_city: str, wanted: str) -> bool:
+    """POI 结果城市归属校验：任一为空视为通过，否则剥掉行政后缀后要求互相包含。"""
+    if not result_city or not wanted:
+        return True
+
+    def strip(name: str) -> str:
+        for suffix in ("特别行政区", "自治区", "省", "市", "区", "县", "地区", "盟"):
+            name = name.removesuffix(suffix)
+        return name
+
+    a, b = strip(result_city), strip(wanted)
+    return not a or not b or a in b or b in a
 
 
 class AMapService:
@@ -67,13 +82,19 @@ class AMapService:
         loc = str(p.get("location", "")).split(",")
         if len(loc) != 2:
             return None
-        return PoiResult(
+        result = PoiResult(
             name=p.get("name", ""),
             address=p.get("address") or "",
             longitude=float(loc[0]),
             latitude=float(loc[1]),
             poi_id=p.get("id", ""),
+            cityname=p.get("cityname") or "",
         )
+        # 高德对无效 city 参数会退化为全国模糊搜索（坪山→搜出唐山图书馆），
+        # 这里按请求城市做归属校验，不匹配视为"该城市没搜到"
+        if not _city_ok(result.cityname, city):
+            return None
+        return result
 
     async def geocode(self, address: str, city: str = "") -> tuple[float, float] | None:
         params: dict = {"address": address}
@@ -87,6 +108,22 @@ class AMapService:
         if len(loc) != 2:
             return None
         return float(loc[0]), float(loc[1])
+
+    async def resolve_city(self, name: str) -> str:
+        """把目的地归一化为标准城市名（坪山→深圳市），供 POI 搜索的 city 参数使用。
+
+        解析失败/非城市地域一律回退原名，调用方无需处理异常。"""
+        try:
+            data = await self._get("/geocode/geo", {"address": name})
+        except Exception:  # noqa: BLE001 —— HTTP/API 错误一律回退原名，辅助步骤不能拖垮定位
+            return name
+        geocodes = data.get("geocodes") or []
+        if not geocodes:
+            return name
+        city = geocodes[0].get("city") or name
+        if isinstance(city, list):  # 直辖市等场景 city 可能为空列表
+            city = name
+        return str(city) or name
 
     async def driving_route_minutes(
         self, origin: tuple[float, float], destination: tuple[float, float]

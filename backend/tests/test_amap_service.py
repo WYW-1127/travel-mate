@@ -105,3 +105,61 @@ async def test_geocode_and_route():
     assert await svc.geocode("解放碑", "重庆") == (106.55, 29.56)
     minutes = await svc.driving_route_minutes((106.55, 29.56), (106.58, 29.56))
     assert minutes == 25  # 1500s = 25min
+
+
+def _poi_payload(cityname: str) -> dict:
+    return {
+        "status": "1",
+        "pois": [
+            {
+                "name": "坪山文化聚落",
+                "address": "坪山区",
+                "location": "114.33,22.69",
+                "id": "B0FFF",
+                "cityname": cityname,
+            }
+        ],
+    }
+
+
+@respx.mock
+async def test_search_poi_rejects_result_from_wrong_city():
+    """无效 city 参数会让高德全国模糊搜索（坪山→搜出唐山），结果城市不匹配必须拒绝。"""
+    respx.get(f"{BASE}/place/text").mock(
+        return_value=httpx.Response(200, json=_poi_payload("唐山市"))
+    )
+    assert await _svc().search_poi("坪山", "图书馆") is None
+
+
+@respx.mock
+async def test_search_poi_accepts_matching_city():
+    respx.get(f"{BASE}/place/text").mock(
+        return_value=httpx.Response(200, json=_poi_payload("深圳市"))
+    )
+    r = await _svc().search_poi("深圳市", "坪山文化聚落")
+    assert r is not None and r.cityname == "深圳市"
+
+
+@respx.mock
+async def test_resolve_city_normalizes_district_to_city():
+    respx.get(f"{BASE}/geocode/geo").mock(
+        return_value=httpx.Response(
+            200,
+            json={"status": "1", "geocodes": [{"city": "深圳市"}]},
+        )
+    )
+    assert await _svc().resolve_city("坪山") == "深圳市"
+
+
+@respx.mock
+async def test_resolve_city_falls_back_to_name_on_failure():
+    respx.get(f"{BASE}/geocode/geo").mock(return_value=httpx.Response(500, text="boom"))
+    assert await _svc().resolve_city("坪山") == "坪山"
+
+
+@respx.mock
+async def test_resolve_city_empty_geocodes_falls_back():
+    respx.get(f"{BASE}/geocode/geo").mock(
+        return_value=httpx.Response(200, json={"status": "1", "geocodes": []})
+    )
+    assert await _svc().resolve_city("不存在的地方") == "不存在的地方"

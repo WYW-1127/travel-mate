@@ -9,6 +9,9 @@ class FakeAMap(AMapService):
         super().__init__(key="fake")
         self.poi_calls = 0
 
+    async def resolve_city(self, name):
+        return name
+
     async def search_poi(self, city, keyword):
         self.poi_calls += 1
         return PoiResult(name=keyword, address="a", longitude=120.1, latitude=30.2, poi_id="P")

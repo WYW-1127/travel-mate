@@ -44,12 +44,22 @@ def build_tools() -> list[dict]:
 class ToolExecutor:
     """执行模型发起的工具调用，结果以 JSON 字符串回传给模型。
 
-    失败不抛异常——一切错误都编码为 {"error": ...} 让模型自行决策（换关键词/换工具/放弃）。"""
+    失败不抛异常——一切错误都编码为 {"error": ...} 让模型自行决策（换关键词/换工具/放弃）。
+    city 参数统一用目的地归一化后的标准城市名（坪山→深圳市），避免无效城市导致全国模糊搜索。"""
 
     def __init__(self, destination: str, amap: AMapService, max_calls: int = MAX_TOOL_CALLS):
         self.destination = destination
         self.amap = amap
         self.remaining = max_calls
+        self._city: str | None = None
+
+    async def _resolved_city(self) -> str:
+        if self._city is None:
+            try:
+                self._city = await self.amap.resolve_city(self.destination)
+            except Exception:  # noqa: BLE001 —— 辅助步骤失败不能拖垮定位，退回原名
+                self._city = self.destination
+        return self._city
 
     async def execute(self, name: str, arguments: str) -> str:
         try:
@@ -63,7 +73,7 @@ class ToolExecutor:
             if self.remaining <= 0:
                 return json.dumps({"error": "定位次数已达上限，请基于已有信息完成回答"}, ensure_ascii=False)
             self.remaining -= 1
-            loc = await search_poi(self.destination, str(args.get("keyword", "")), self.amap)
+            loc = await search_poi(await self._resolved_city(), str(args.get("keyword", "")), self.amap)
             if loc is None:
                 return json.dumps({"error": "未找到该地点，可尝试更换关键词或改用 geocode"}, ensure_ascii=False)
             return loc.model_dump_json(by_alias=True)
@@ -73,7 +83,7 @@ class ToolExecutor:
                 return json.dumps({"error": "定位次数已达上限，请基于已有信息完成回答"}, ensure_ascii=False)
             self.remaining -= 1
             try:
-                coords = await self.amap.geocode(str(args.get("address", "")), str(args.get("city", "")))
+                coords = await self.amap.geocode(str(args.get("address", "")), await self._resolved_city())
             except AMapError:
                 return json.dumps({"error": "地理编码服务暂时不可用"}, ensure_ascii=False)
             if coords is None:

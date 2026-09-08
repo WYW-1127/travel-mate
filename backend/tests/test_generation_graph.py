@@ -42,6 +42,9 @@ class FakeAMap(AMapService):
     def __init__(self, key="fake"):
         super().__init__(key=key)
 
+    async def resolve_city(self, name):
+        return name
+
     async def search_poi(self, city, keyword):
         return PoiResult(name=keyword, address="a", longitude=106.578, latitude=29.562, poi_id="P")
 

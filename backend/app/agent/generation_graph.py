@@ -4,6 +4,7 @@
 → finalize（结构校验+确定性校验，失败带反馈重试 ≤MAX_ATTEMPTS 次尝试）。
 对外 generate_trip 签名与 SSE 事件协议与迁移前完全一致。"""
 
+import asyncio
 import json
 import uuid
 from collections.abc import AsyncIterator
@@ -61,11 +62,11 @@ def _system_prompt(req: GenerateRequest) -> str:
 
 规则：
 1. 每天 3-6 个活动（含用餐），时段 HH:MM，同一天内不重叠、按时间排序；同一天的活动集中在相邻区域，动线合理。
-2. 草稿中的每个地点必须先调工具定位：search_poi 优先，搜不到用 geocode；严禁编造经纬度。
-3. type 取值：attraction | meal | transport | hotel | shopping；cost 是人均预估（元），免费填 0。
-4. 最终只输出一个 JSON 对象（结构如下，location 用定位返回的规范名/地址/坐标）：
-{{"title": "行程标题", "days": [{{"title": "当天主题", "activities": [{{"name": "地点名", "type": "attraction", "startTime": "09:30", "endTime": "12:00", "cost": 0, "notes": "提示可空", "location": {{"name": "…", "address": "…", "longitude": 120.1, "latitude": 30.2, "resolved": true}}}}]}}]}}
-5. 定位彻底失败的地点：location 填 {{"name": "地点名", "resolved": false}}，不要虚构坐标。"""
+2. 先想好行程要去的全部地点，然后在同一轮里一次性并行调用工具定位全部地点（不要逐个往返查询）；拿到定位结果后立即输出最终 JSON。
+3. 严禁编造经纬度；搜索失败的地点可更换关键词重查一次，仍失败则 location 填 {{"name": "地点名", "resolved": false}}。
+4. type 取值：attraction | meal | transport | hotel | shopping；cost 是人均预估（元），免费填 0。
+5. 最终只输出一个 JSON 对象（结构如下，location 用定位返回的规范名/地址/坐标）：
+{{"title": "行程标题", "days": [{{"title": "当天主题", "activities": [{{"name": "地点名", "type": "attraction", "startTime": "09:30", "endTime": "12:00", "cost": 0, "notes": "提示可空", "location": {{"name": "…", "address": "…", "longitude": 120.1, "latitude": 30.2, "resolved": true}}}}]}}]}}"""
 
 
 def _retry(state: GenState, problems: list[str]) -> dict:
@@ -123,13 +124,19 @@ async def agent_call(state: GenState, config) -> dict:
 async def execute_tools(state: GenState, config) -> dict:
     executor: ToolExecutor = config["configurable"]["executor"]
     writer = get_stream_writer()
-    msgs = list(state["glm_messages"])
-    for call in state["pending_calls"] or []:
+    calls = state["pending_calls"] or []
+
+    async def one(call: dict):
         label = _tool_label(call["arguments"])
         if label and writer:
             writer({"kind": "progress", "message": f"正在定位：{label}"})
-        result = await executor.execute(call["name"], call["arguments"])
-        msgs.append({"role": "tool", "tool_call_id": call["id"], "content": result})
+        # 个人 key QPS=3：并发执行但限 3 路
+        async with asyncio.Semaphore(3):
+            return call["id"], await executor.execute(call["name"], call["arguments"])
+
+    results = await asyncio.gather(*(one(c) for c in calls))
+    msgs = list(state["glm_messages"])
+    msgs.extend({"role": "tool", "tool_call_id": cid, "content": result} for cid, result in results)
     if state["rounds"] >= MAX_ROUNDS:
         msgs.append({"role": "user", "content": "工具调用已达上限，立即基于已有信息输出最终 JSON。"})
     return {"glm_messages": msgs, "pending_calls": None}
