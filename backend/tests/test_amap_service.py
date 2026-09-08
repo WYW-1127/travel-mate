@@ -211,9 +211,13 @@ async def test_weather_forecast_parses_days():
             200,
             json={
                 "status": "1",
-                "forecast": [
-                    {"date": "2026-09-08", "dayweather": "晴", "nightweather": "多云",
-                     "daytemp": "30", "nighttemp": "25"},
+                "forecasts": [
+                    {"city": "深圳市", "adcode": "440300", "province": "广东",
+                     "reporttime": "2026-09-08 16:00:00",
+                     "casts": [
+                         {"date": "2026-09-08", "dayweather": "晴", "nightweather": "多云",
+                          "daytemp": "30", "nighttemp": "25"}
+                     ]},
                 ],
             },
         )

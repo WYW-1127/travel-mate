@@ -149,20 +149,26 @@ class AMapService:
         }
 
     async def weather_forecast(self, adcode: str) -> list[dict]:
-        """目的地未来 3 天预报（extensions=all），独立免费配额，不占 POI 日配额。"""
+        """目的地未来 3 天预报（extensions=all），独立免费配额，不占 POI 日配额。
+
+        高德返回结构：{"forecasts": [{"city": …, "casts": [{date, dayweather, …}]}]}。
+        区级 adcode（如坪山 440310）同样受支持。"""
         data = await self._get(
             "/weather/weatherInfo", {"city": adcode, "extensions": "all"}
         )
-        forecasts = data.get("forecast") or []
+        forecasts = data.get("forecasts") or []
+        if not forecasts:
+            return []
+        casts = forecasts[0].get("casts") or []
         return [
             {
-                "date": f.get("date", ""),
-                "dayweather": f.get("dayweather", ""),
-                "nightweather": f.get("nightweather", ""),
-                "daytemp": f.get("daytemp", ""),
-                "nighttemp": f.get("nighttemp", ""),
+                "date": c.get("date", ""),
+                "dayweather": c.get("dayweather", ""),
+                "nightweather": c.get("nightweather", ""),
+                "daytemp": c.get("daytemp", ""),
+                "nighttemp": c.get("nighttemp", ""),
             }
-            for f in forecasts
+            for c in casts
         ]
 
     async def driving_route_minutes(
