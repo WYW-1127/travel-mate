@@ -19,6 +19,7 @@ class PoiResult(BaseModel):
     latitude: float
     poi_id: str = ""
     cityname: str = ""  # 结果归属城市（如 深圳市），用于城市归属校验
+    distance_km: float | None = None  # 周边搜索时与中心点的距离
 
 
 def _city_ok(result_city: str, wanted: str) -> bool:
@@ -181,6 +182,39 @@ class AMapService:
             }
             for c in casts
         ]
+
+    async def search_nearby(
+        self, longitude: float, latitude: float, radius: int = 1000, keywords: str = ""
+    ) -> list[PoiResult]:
+        """周边搜索：中心坐标 radius 米内的 POI（可按关键词过滤），按距离升序。"""
+        params: dict = {
+            "location": f"{longitude},{latitude}",
+            "radius": radius,
+            "offset": 5,
+            "sortrule": "distance",
+        }
+        if keywords:
+            params["keywords"] = keywords
+        data = await self._get("/place/around", params)
+        results: list[PoiResult] = []
+        for p in data.get("pois") or []:
+            loc = str(p.get("location", "")).split(",")
+            if len(loc) != 2:
+                continue
+            try:
+                dist_km = round(int(p.get("distance") or 0) / 1000, 2)
+            except (ValueError, TypeError):
+                dist_km = None
+            results.append(PoiResult(
+                name=p.get("name", ""),
+                address=p.get("address") or "",
+                longitude=float(loc[0]),
+                latitude=float(loc[1]),
+                poi_id=p.get("id", ""),
+                cityname=p.get("cityname") or "",
+                distance_km=dist_km,
+            ))
+        return results
 
     async def aclose(self) -> None:
         if self._client is not None and self._owns_client:

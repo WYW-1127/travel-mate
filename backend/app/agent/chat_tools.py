@@ -55,6 +55,23 @@ def build_tools() -> list[dict]:
         {
             "type": "function",
             "function": {
+                "name": "search_around",
+                "description": "搜索某坐标周边的地点（如餐厅/景点/地铁站），按距离升序。回答「附近有什么」类问题时用它。",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "longitude": {"type": "number", "description": "中心点经度（来自 search_poi 结果）"},
+                        "latitude": {"type": "number", "description": "中心点纬度"},
+                        "keywords": {"type": "string", "description": "类型关键词，如 素食餐厅/博物馆/地铁站，可空"},
+                        "radius": {"type": "integer", "description": "搜索半径米数，默认 1000"},
+                    },
+                    "required": ["longitude", "latitude"],
+                },
+            },
+        },
+        {
+            "type": "function",
+            "function": {
                 "name": "weather",
                 "description": "查询目的地未来 3 天天气预报（日期/白天与夜间天气/温度），无需参数。",
                 "parameters": {"type": "object", "properties": {}},
@@ -134,6 +151,33 @@ class ToolExecutor:
             if detail is None:
                 return json.dumps({"error": "未找到该地点的详情"}, ensure_ascii=False)
             return json.dumps({k: v for k, v in detail.items() if v}, ensure_ascii=False)
+
+        if name == "search_around":
+            try:
+                lng = float(args.get("longitude"))
+                lat = float(args.get("latitude"))
+            except (TypeError, ValueError):
+                return json.dumps({"error": "缺少合法的经纬度参数"}, ensure_ascii=False)
+            if self.remaining <= 0:
+                return self._quota_denied()
+            self.remaining -= 1
+            radius = args.get("radius", 1000)
+            try:
+                radius = int(radius)
+            except (TypeError, ValueError):
+                radius = 1000
+            radius = max(100, min(radius, 5000))
+            try:
+                pois = await self.amap.search_nearby(
+                    lng, lat, radius=radius, keywords=str(args.get("keywords", "")))
+            except AMapError as e:
+                return json.dumps({"error": f"周边搜索失败：{e}"}, ensure_ascii=False)
+            except Exception:  # noqa: BLE001
+                return json.dumps({"error": "周边搜索服务暂时不可用"}, ensure_ascii=False)
+            return json.dumps({
+                "pois": [p.model_dump(by_alias=True) for p in pois],
+                "count": len(pois),
+            }, ensure_ascii=False)
 
         if name == "weather":
             admin = await self._admin()

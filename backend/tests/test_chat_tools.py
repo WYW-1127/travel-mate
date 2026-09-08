@@ -14,6 +14,7 @@ class FakeAMap(AMapService):
                                     "opentime": "09:00-17:30", "rating": "", "cost": ""}
         self.forecast = [{"date": "2026-09-08", "dayweather": "晴", "nightweather": "多云",
                           "daytemp": "30", "nighttemp": "25"}]
+        self.nearby = []
 
     async def resolve_admin(self, name):
         return self.admin
@@ -32,11 +33,14 @@ class FakeAMap(AMapService):
     async def weather_forecast(self, adcode):
         return self.forecast
 
+    async def search_nearby(self, longitude, latitude, radius=1000, keywords=""):
+        return self.nearby
+
 
 def test_build_tools_defines_four_tools():
     tools = build_tools()
     names = [t["function"]["name"] for t in tools]
-    assert names == ["search_poi", "geocode", "poi_detail", "weather"]
+    assert names == ["search_poi", "geocode", "poi_detail", "search_around", "weather"]
     for t in tools:
         assert t["type"] == "function"
         assert "parameters" in t["function"]
@@ -120,3 +124,20 @@ async def test_search_poi_caches_location_by_poi_id():
     await ex.execute("search_poi", '{"city": "杭州", "keyword": "雷峰塔"}')
     assert "P" in ex.poi_cache  # 工具结果按 poi_id 缓存，供最终 JSON 回填
     assert ex.poi_cache["P"]["longitude"] == 120.1
+
+
+async def test_around_tool_returns_nearby_pois():
+    fake = FakeAMap()
+    fake.nearby = [
+        PoiResult(name="静心莲素食", address="隆福寺街", longitude=116.41, latitude=39.93, poi_id="B1"),
+    ]
+    ex = ToolExecutor("北京", fake)
+    out = json.loads(await ex.execute(
+        "search_around", '{"longitude": 116.41, "latitude": 39.93, "keywords": "素食"}'))
+    assert out["pois"][0]["name"] == "静心莲素食"
+    assert "distance_km" in out["pois"][0]
+
+
+async def test_around_tool_requires_coords():
+    out = json.loads(await ToolExecutor("北京", FakeAMap()).execute("search_around", '{"keywords": "素食"}'))
+    assert "error" in out

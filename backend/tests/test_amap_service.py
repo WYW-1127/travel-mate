@@ -243,3 +243,33 @@ async def test_resolve_admin_returns_city_and_adcode():
         )
     )
     assert await _svc().resolve_admin("坪山") == {"city": "深圳市", "adcode": "440300"}
+
+
+@respx.mock
+async def test_search_nearby_returns_sorted_pois():
+    respx.get(f"{BASE}/place/around").mock(
+        return_value=httpx.Response(
+            200,
+            json={
+                "status": "1",
+                "pois": [
+                    {"name": "静心莲素食", "address": "隆福寺街", "location": "116.41,39.93",
+                     "id": "B1", "cityname": "北京市", "distance": "150"},
+                    {"name": "叙香斋素食", "address": "前门大街", "location": "116.40,39.90",
+                     "id": "B2", "cityname": "北京市", "distance": "900"},
+                ],
+            },
+        )
+    )
+    pois = await _svc().search_nearby(116.41, 39.93, radius=1000, keywords="素食")
+    assert pois[0].name == "静心莲素食"
+    assert pois[0].distance_km == 0.15
+    assert respx.calls[0].request.url.params["radius"] == "1000"
+
+
+@respx.mock
+async def test_search_nearby_empty_returns_list():
+    respx.get(f"{BASE}/place/around").mock(
+        return_value=httpx.Response(200, json={"status": "1", "pois": []})
+    )
+    assert await _svc().search_nearby(116.41, 39.93) == []

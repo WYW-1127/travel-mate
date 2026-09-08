@@ -66,6 +66,7 @@ def _system_prompt(req: GenerateRequest) -> str:
 3. 严禁编造或抄写经纬度、地址。最终 JSON 的 location 一律用引用：{{"amapPoiId": "<该地点 search_poi 结果里的 amapPoiId>"}}，系统会自动回填坐标；搜索失败的地点才填 {{"name": "地点名", "resolved": false}}。
 4. type 取值：attraction | meal | transport | hotel | shopping；cost 是人均预估（元），免费填 0。
 5. 先调用 weather 查看目的地天气：雨天/酷热优先安排室内活动，把户外放在天气好的时段。重点景点可用 poi_detail 核实营业时间与门票（poi_id 来自 search_poi），查不到的信息按常识预估，不要编造。
+6. 选点拿不准时（同类候选多个），用 poi_detail 查评分做比较，优先评分高、距离顺路的；需要给某活动补充周边安排（如午餐后附近的咖啡馆）时用 search_around。
 6. 最终只输出一个 JSON 对象（结构如下）：
 {{"title": "行程标题", "days": [{{"title": "当天主题", "activities": [{{"name": "地点名", "type": "attraction", "startTime": "09:30", "endTime": "12:00", "cost": 0, "notes": "≤20字", "location": {{"amapPoiId": "B0FF000000"}}]}}]}}}}"""
 
