@@ -62,7 +62,7 @@ export interface GenerateRequest {
   budgetLimit?: number | null
   preferences?: string
   /** AI 思考深度：low=快速（浅思考），high=深度（慢但更合理）；不传跟随服务端默认 */
-  thinking_effort?: 'low' | 'high'
+  thinking_effort?: 'low' | 'high' | 'off'
   /** 客户端请求标识：生成任务化后作为断线重连的凭据 */
   request_id?: string
 }
@@ -70,7 +70,7 @@ export interface GenerateRequest {
 export interface ReplanRequest {
   trip: Trip
   request: string
-  thinking_effort?: 'low' | 'high'
+  thinking_effort?: 'low' | 'high' | 'off'
 }
 
 export interface ReplayRequest {
@@ -80,7 +80,7 @@ export interface ReplayRequest {
 export interface ChatRequest {
   trip: Trip
   message: string
-  thinking_effort?: 'low' | 'high'
+  thinking_effort?: 'low' | 'high' | 'off'
   /** 用户长期偏好档案，服务端注入系统提示词 */
   profile?: string[]
 }

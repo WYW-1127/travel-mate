@@ -14,7 +14,7 @@ const trips = useTripsStore()
 const profile = useProfileStore()
 
 const draft = ref('')
-const thinking = ref(true)
+const effort = ref<'off' | 'low' | 'high'>('high')
 
 async function send() {
   if (!draft.value.trim() || !store.trip || generation.phase === 'running') return
@@ -22,7 +22,7 @@ async function send() {
   const message = draft.value.trim()
   const done = generation.run(
     '/api/trips/chat',
-    { trip: current, message, thinking_effort: thinking.value ? 'high' : 'low', profile: profile.items },
+    { trip: current, message, thinking_effort: effort.value, profile: profile.items },
   )
   await done
   if (generation.phase === 'done' && generation.result) {
@@ -104,9 +104,17 @@ function fmt(ts?: string) {
         撤销
       </button>
     </form>
-    <label class="mt-2 flex w-fit cursor-pointer items-center gap-1.5 text-xs text-slate-500">
-      <input v-model="thinking" type="checkbox" class="h-3.5 w-3.5 accent-teal-600" />
-      深度思考（取消=快速档）
+    <label class="mt-2 flex w-fit items-center gap-1.5 text-xs text-slate-500">
+      AI 档位
+      <select
+        v-model="effort"
+        class="rounded-lg border border-teal-300 bg-white px-2 py-1 text-xs focus:border-teal-500 focus:outline-none disabled:opacity-50"
+        :disabled="generation.phase === 'running'"
+      >
+        <option value="off">极速</option>
+        <option value="low">快速</option>
+        <option value="high">深度</option>
+      </select>
     </label>
   </div>
 </template>

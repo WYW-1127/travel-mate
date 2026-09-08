@@ -19,7 +19,7 @@ const form = reactive({
   children: 0,
   budgetLimit: null as number | null,
   preferences: '',
-  thinking: true,
+  effort: 'high' as 'off' | 'low' | 'high',
 })
 const error = ref('')
 
@@ -52,7 +52,7 @@ function submit() {
     travelers: { adults: form.adults, children: form.children },
     budgetLimit: form.budgetLimit,
     preferences: form.preferences,
-    thinking_effort: form.thinking ? 'high' : 'low',
+    thinking_effort: form.effort,
     request_id: requestId,
   })
   router.push({ name: 'generating' })
@@ -149,10 +149,16 @@ function submit() {
 
       <p v-if="error" class="text-sm text-red-600">{{ error }}</p>
 
-      <label class="flex cursor-pointer items-center gap-2 text-sm text-slate-600">
-        <input v-model="form.thinking" type="checkbox" class="h-4 w-4 accent-teal-600" />
-        AI 深度思考
-        <span class="text-xs text-slate-400">勾选=深度（慢但动线节奏更合理），取消=快速</span>
+      <label class="flex items-center gap-2 text-sm text-slate-600">
+        <span>AI 档位</span>
+        <select
+          v-model="form.effort"
+          class="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm focus:border-teal-500 focus:outline-none"
+        >
+          <option value="off">极速（无思考，最快）</option>
+          <option value="low">快速（浅思考）</option>
+          <option value="high">深度（慢但更合理）</option>
+        </select>
       </label>
 
       <button

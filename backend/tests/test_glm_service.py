@@ -179,3 +179,20 @@ async def test_chat_with_tools_payload_contains_tools_json_mode_and_thinking():
     assert p["thinking"] == {"type": "enabled", "effort": "high"}
     assert p["stream"] is True
     assert p["tools"][0]["function"]["name"] == "search_poi"
+
+
+@respx.mock
+async def test_effort_off_switches_fast_model_and_drops_thinking():
+    """极速档：不带 thinking 字段，且切换到非思考快速模型。"""
+    captured: list[dict] = []
+
+    def capture(request: httpx.Request) -> httpx.Response:
+        captured.append(json.loads(request.content))
+        return httpx.Response(200, content=_tools_stream_body().encode("utf-8"))
+
+    respx.post(f"{BASE}/chat/completions").mock(side_effect=capture)
+    svc = GLMService(api_key="k", thinking_effort="off", client=httpx.AsyncClient())
+    await svc.chat_with_tools([{"role": "user", "content": "hi"}], tools=[])
+    p = captured[0]
+    assert "thinking" not in p
+    assert p["model"] == "glm-4-air"
