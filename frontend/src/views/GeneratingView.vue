@@ -36,9 +36,9 @@ watch(
         thinking: generation.thinking,
       })
       router.replace({ name: 'trip-detail', params: { id: saved.id! } })
-    } else if (phase === 'error') {
-      clearGenMarker()
     }
+    // error 时不清标记：刷新导致的断连里任务还在后台跑，回本页可重放重连；
+    // 标记由 15 分钟自然过期兜底
   },
 )
 
