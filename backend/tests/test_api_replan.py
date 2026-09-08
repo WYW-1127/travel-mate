@@ -56,4 +56,4 @@ async def test_replan_wiring_import_present():
 
     src = inspect.getsource(trips_api)
     assert "from app.agent.replanner import replan_trip" in src
-    assert "from app.agent.generation_graph import generate_trip" in src
+    assert "from app.services.gen_jobs import gen_jobs" in src

@@ -3,14 +3,19 @@ from collections.abc import AsyncIterator
 from fastapi import APIRouter, Depends
 from fastapi.responses import StreamingResponse
 
+from collections.abc import AsyncIterator
+
+from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import JSONResponse, StreamingResponse
+
 from app.agent.chat_graph import chat_turn
-from app.agent.generation_graph import generate_trip
 from app.agent.replanner import replan_trip
 from app.schemas.chat import ChatRequest
 from app.schemas.events import ErrorEvent, StreamEvent, encode_event
 from app.schemas.generate import GenerateRequest
 from app.schemas.replan import ReplanRequest
 from app.services.amap import AMapService
+from app.services.gen_jobs import gen_jobs
 from app.services.glm import GLMService
 
 router = APIRouter(prefix="/trips", tags=["trips"])
@@ -38,12 +43,32 @@ async def generate(
     req: GenerateRequest,
     amap: AMapService = Depends(get_amap),
 ) -> StreamingResponse:
-    # thinking_effort 是逐请求档位，GLMService 必须按请求构造，不能走单例依赖
+    # 生成在后台任务里跑完：SSE 只是任务事件流的一个订阅者，
+    # 客户端断线后凭 request_id 走 /gen-jobs/{rid}/replay 领回结果
+    job = gen_jobs.start(req, glm=GLMService(thinking_effort=req.thinking_effort), amap=amap)
     return StreamingResponse(
-        _sse(generate_trip(req, glm=GLMService(thinking_effort=req.thinking_effort), amap=amap)),
+        _sse(job.subscribe()),
         media_type="text/event-stream",
         headers=SSE_HEADERS,
     )
+
+
+@router.post("/gen-jobs/{rid}/replay")
+async def gen_job_replay(rid: str) -> StreamingResponse:
+    job = gen_jobs.get(rid)
+    if job is None:
+        return JSONResponse(status_code=404, content={"detail": "生成任务不存在或已过期"})
+    return StreamingResponse(
+        _sse(job.subscribe()),
+        media_type="text/event-stream",
+        headers=SSE_HEADERS,
+    )
+
+
+@router.post("/gen-jobs/{rid}/cancel")
+async def gen_job_cancel(rid: str) -> dict:
+    gen_jobs.cancel(rid)
+    return {"ok": True}
 
 
 @router.post("/replan")

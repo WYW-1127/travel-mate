@@ -9,32 +9,48 @@ from app.main import app
 from app.schemas.events import CompleteEvent, ProgressEvent
 from app.services.amap import AMapService, PoiResult
 
-PLANNER = "app.agent.generation_graph.generate_trip"
-
+JOBS = "app.services.gen_jobs.gen_jobs"
 
 
 class StubAMap(AMapService):
     pass
 
 
+class FakeJob:
+    """假任务：subscribe 重放 events。"""
+
+    def __init__(self, events):
+        self.events = events
+        self.status = "done"
+
+    async def subscribe(self):
+        for e in self.events:
+            yield e
+
+
 @pytest.fixture(autouse=True)
 def _restore():
     yield
-    import app.agent.generation_graph as planner_mod
+    import app.services.gen_jobs as jobs_mod
     import app.api.trips as trips_api
 
-    trips_api.generate_trip = planner_mod.generate_trip
+    trips_api.gen_jobs = jobs_mod.gen_jobs
     app.dependency_overrides.clear()
 
 
-async def test_generate_streams_sse_frames(client):
-    async def fake_generate(req, glm=None, amap=None):
-        yield ProgressEvent(stage="analyze", message="hi")
-        yield CompleteEvent(trip={"destination": "重庆"})
-
+def _install_fake_jobs(monkeypatch, fake):
     import app.api.trips as trips_api
 
-    trips_api.generate_trip = fake_generate
+    monkeypatch.setattr(trips_api, "gen_jobs", fake)
+
+
+async def test_generate_streams_sse_frames(client, monkeypatch):
+    class FakeManager:
+        def start(self, req, glm=None, amap=None):
+            return FakeJob([ProgressEvent(stage="analyze", message="hi"),
+                            CompleteEvent(trip={"destination": "重庆"})])
+
+    _install_fake_jobs(monkeypatch, FakeManager())
     app.dependency_overrides[get_amap] = lambda: StubAMap(key="x")
 
     resp = await client.post(
@@ -49,14 +65,17 @@ async def test_generate_streams_sse_frames(client):
     assert '"type":"complete"' in frames[-1]
 
 
-async def test_generate_wraps_internal_error(client):
-    async def boom(req, glm=None, amap=None):
-        yield ProgressEvent(stage="analyze", message="start")
-        raise RuntimeError("意外崩溃")
+async def test_generate_wraps_internal_error(client, monkeypatch):
+    class BoomJob:
+        async def subscribe(self):
+            raise RuntimeError("意外崩溃")
+            yield
 
-    import app.api.trips as trips_api
+    class FakeManager:
+        def start(self, req, glm=None, amap=None):
+            return BoomJob()
 
-    trips_api.generate_trip = boom
+    _install_fake_jobs(monkeypatch, FakeManager())
     app.dependency_overrides[get_amap] = lambda: StubAMap(key="x")
 
     resp = await client.post(
@@ -123,3 +142,42 @@ async def test_generate_respects_request_thinking_effort(client, monkeypatch, tm
         assert captured[-1]["thinking"] == {"type": "enabled", "effort": "high"}
         assert '"type":"complete"' in resp2.text
     config_mod.get_settings.cache_clear()
+
+
+async def test_gen_job_replay_streams_complete(client, monkeypatch):
+    class FakeManager:
+        def get(self, rid):
+            if rid == "rid-1":
+                return FakeJob([CompleteEvent(trip={"destination": "重庆", "version": 2})])
+            return None
+
+    _install_fake_jobs(monkeypatch, FakeManager())
+    resp = await client.post("/api/trips/gen-jobs/rid-1/replay")
+    assert resp.status_code == 200
+    assert '"type":"complete"' in resp.text
+    assert '"version":2' in resp.text
+
+
+async def test_gen_job_replay_unknown_returns_404(client, monkeypatch):
+    class FakeManager:
+        def get(self, rid):
+            return None
+
+    _install_fake_jobs(monkeypatch, FakeManager())
+    resp = await client.post("/api/trips/gen-jobs/nope/replay")
+    assert resp.status_code == 404
+
+
+async def test_gen_job_cancel_is_idempotent(client, monkeypatch):
+    cancelled = []
+
+    class FakeManager:
+        def cancel(self, rid):
+            cancelled.append(rid)
+            return True
+
+    _install_fake_jobs(monkeypatch, FakeManager())
+    resp = await client.post("/api/trips/gen-jobs/rid-1/cancel")
+    assert resp.status_code == 200
+    assert resp.json() == {"ok": True}
+    assert cancelled == ["rid-1"]
