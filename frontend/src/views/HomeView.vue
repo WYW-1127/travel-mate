@@ -5,6 +5,7 @@ import { useRouter } from 'vue-router'
 import { extractPreferences } from '@/api/preferences'
 import { useGenerationStore } from '@/stores/generation'
 import { useProfileStore } from '@/stores/profile'
+import { saveGenMarker } from '@/utils/genMarker'
 
 const router = useRouter()
 const generation = useGenerationStore()
@@ -41,6 +42,9 @@ function submit() {
       .then((items) => profile.addAll(items))
       .catch(() => {})
   }
+  // 生成任务化：记录请求标记，页面刷新后可断线重连领回行程
+  const requestId = crypto.randomUUID()
+  saveGenMarker(requestId)
   generation.run('/api/trips/generate', {
     destination: form.destination.trim(),
     days: form.days,
@@ -49,6 +53,7 @@ function submit() {
     budgetLimit: form.budgetLimit,
     preferences: form.preferences,
     thinking_effort: form.thinking ? 'high' : 'low',
+    request_id: requestId,
   })
   router.push({ name: 'generating' })
 }

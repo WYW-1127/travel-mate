@@ -1,4 +1,4 @@
-import type { ChatRequest, GenerateRequest, ReplanRequest, StreamEvent } from '@/types/trip'
+import type { ChatRequest, GenerateRequest, ReplayRequest, ReplanRequest, StreamEvent } from '@/types/trip'
 
 export class SSEError extends Error {
   code: string
@@ -16,7 +16,7 @@ export class SSEError extends Error {
  */
 export function postSSE(
   url: string,
-  body: GenerateRequest | ReplanRequest | ChatRequest,
+  body: GenerateRequest | ReplanRequest | ChatRequest | ReplayRequest,
   onEvent: (event: StreamEvent) => void,
 ): { stop: () => void; done: Promise<void> } {
   const controller = new AbortController()

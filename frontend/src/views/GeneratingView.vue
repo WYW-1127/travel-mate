@@ -2,9 +2,11 @@
 import { computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 
+import { postJson } from '@/api/client'
 import ThinkingPanel from '@/components/ThinkingPanel.vue'
 import { useGenerationStore } from '@/stores/generation'
 import { useTripsStore } from '@/stores/trips'
+import { clearGenMarker, loadGenMarker } from '@/utils/genMarker'
 
 const router = useRouter()
 const generation = useGenerationStore()
@@ -13,8 +15,14 @@ const trips = useTripsStore()
 const latest = computed(() => generation.messages.at(-1) ?? '…')
 
 onMounted(() => {
-  // 直接访问本页但没有进行中的任务 → 回首页
-  if (generation.phase === 'idle') router.replace({ name: 'home' })
+  if (generation.phase !== 'idle') return
+  const marker = loadGenMarker()
+  if (marker) {
+    // 断线重连：上次生成被刷新/关闭打断，重放后台任务的事件流领回行程
+    generation.run(`/api/trips/gen-jobs/${marker.id}/replay`, {})
+    return
+  }
+  router.replace({ name: 'home' })
 })
 
 // 结果落地：带上思考文本存库并跳详情（phase 响应式监听，不轮询）
@@ -22,16 +30,25 @@ watch(
   () => generation.phase,
   (phase) => {
     if (phase === 'done' && generation.result) {
+      clearGenMarker()
       const saved = trips.upsert({
         ...generation.result,
         thinking: generation.thinking,
       })
       router.replace({ name: 'trip-detail', params: { id: saved.id! } })
+    } else if (phase === 'error') {
+      clearGenMarker()
     }
   },
 )
 
 function backHome() {
+  const marker = loadGenMarker()
+  if (marker) {
+    // 真正取消后台任务（释放 GLM/配额），失败无声
+    postJson(`/api/trips/gen-jobs/${marker.id}/cancel`, {}).catch(() => {})
+    clearGenMarker()
+  }
   generation.stop?.()
   router.push({ name: 'home' })
 }

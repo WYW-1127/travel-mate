@@ -63,12 +63,18 @@ export interface GenerateRequest {
   preferences?: string
   /** AI 思考深度：low=快速（浅思考），high=深度（慢但更合理）；不传跟随服务端默认 */
   thinking_effort?: 'low' | 'high'
+  /** 客户端请求标识：生成任务化后作为断线重连的凭据 */
+  request_id?: string
 }
 
 export interface ReplanRequest {
   trip: Trip
   request: string
   thinking_effort?: 'low' | 'high'
+}
+
+export interface ReplayRequest {
+  /** 重放接口无需请求体 */
 }
 
 export interface ChatRequest {

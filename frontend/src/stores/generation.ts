@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 
 import { postSSE, SSEError } from '@/api/sse'
-import type { ChatRequest, GenerateRequest, ReplanRequest, StreamEvent, Trip } from '@/types/trip'
+import type { ChatRequest, GenerateRequest, ReplayRequest, ReplanRequest, StreamEvent, Trip } from '@/types/trip'
 
 export type GenerationPhase = 'idle' | 'running' | 'done' | 'error'
 
@@ -27,7 +27,11 @@ export const useGenerationStore = defineStore('generation', {
       this.stop = null
     },
     /** 发起流式请求；onEvent 可选，用于调用方旁路监听 */
-    run(url: string, body: GenerateRequest | ReplanRequest | ChatRequest, onEvent?: (e: StreamEvent) => void) {
+    run(
+      url: string,
+      body: GenerateRequest | ReplanRequest | ChatRequest | ReplayRequest,
+      onEvent?: (e: StreamEvent) => void,
+    ) {
       this.reset()
       this.phase = 'running'
       const { stop, done } = postSSE(url, body, (event) => {
