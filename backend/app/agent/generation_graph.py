@@ -29,6 +29,7 @@ from app.schemas.events import (
     ThinkingEvent,
 )
 from app.schemas.generate import GenerateRequest
+from app.schemas.trip import Location
 from app.services.amap import AMapService
 from app.services.glm import GLMError, GLMService
 
@@ -60,13 +61,13 @@ def _system_prompt(req: GenerateRequest) -> str:
 - 偏好与要求：{req.preferences or "（无）"}
 
 规则：
-1. 每天 3-6 个活动（含用餐），时段 HH:MM，同一天内不重叠、按时间排序；同一天的活动集中在相邻区域，动线合理。
-2. 先想好行程要去的全部地点，然后在同一轮里一次性并行调用工具定位全部地点（不要逐个往返查询）；拿到定位结果后立即输出最终 JSON。
-3. 严禁编造经纬度；搜索失败的地点可更换关键词重查一次，仍失败则 location 填 {{"name": "地点名", "resolved": false}}。
+1. 每天 3-6 个活动（含用餐），时段 HH:MM，同一天内不重叠、按时间排序；同一天的活动集中在相邻区域，动线合理；notes 每条不超过 20 字，只写关键提示。
+2. 动身查询前先想好全部地点，然后在同一轮一次性并行调用 search_poi 定位**所有**地点——严禁分批多次查询，这是硬性要求。
+3. 严禁编造或抄写经纬度、地址。最终 JSON 的 location 一律用引用：{{"amapPoiId": "<该地点 search_poi 结果里的 amapPoiId>"}}，系统会自动回填坐标；搜索失败的地点才填 {{"name": "地点名", "resolved": false}}。
 4. type 取值：attraction | meal | transport | hotel | shopping；cost 是人均预估（元），免费填 0。
 5. 先调用 weather 查看目的地天气：雨天/酷热优先安排室内活动，把户外放在天气好的时段。重点景点可用 poi_detail 核实营业时间与门票（poi_id 来自 search_poi），查不到的信息按常识预估，不要编造。
-6. 最终只输出一个 JSON 对象（结构如下，location 用定位返回的规范名/地址/坐标）：
-{{"title": "行程标题", "days": [{{"title": "当天主题", "activities": [{{"name": "地点名", "type": "attraction", "startTime": "09:30", "endTime": "12:00", "cost": 0, "notes": "提示可空", "location": {{"name": "…", "address": "…", "longitude": 120.1, "latitude": 30.2, "resolved": true}}}}]}}]}}"""
+6. 最终只输出一个 JSON 对象（结构如下）：
+{{"title": "行程标题", "days": [{{"title": "当天主题", "activities": [{{"name": "地点名", "type": "attraction", "startTime": "09:30", "endTime": "12:00", "cost": 0, "notes": "≤20字", "location": {{"amapPoiId": "B0FF000000"}}]}}]}}}}"""
 
 
 def _retry(state: GenState, problems: list[str]) -> dict:
@@ -89,6 +90,21 @@ def _tool_label(arguments: str) -> str:
     except json.JSONDecodeError:
         return ""
     return str(args.get("keyword") or args.get("address") or "")
+
+
+def _backfill_locations(trip, executor) -> None:
+    """最终 JSON 的 location 用 amapPoiId 引用（省模型抄写坐标），这里从工具缓存回填。"""
+    if executor is None:
+        return
+    for day in trip.days:
+        for act in day.activities:
+            loc = act.location
+            if loc is None or loc.resolved or not loc.amap_poi_id:
+                continue
+            cached = executor.poi_cache.get(loc.amap_poi_id)
+            if not cached:
+                continue
+            act.location = Location.model_validate(cached)
 
 
 async def agent_call(state: GenState, config) -> dict:
@@ -139,6 +155,11 @@ async def execute_tools(state: GenState, config) -> dict:
     msgs.extend({"role": "tool", "tool_call_id": cid, "content": result} for cid, result in results)
     if state["rounds"] >= MAX_ROUNDS:
         msgs.append({"role": "user", "content": "工具调用已达上限，立即基于已有信息输出最终 JSON。"})
+    elif state["rounds"] >= 2:
+        msgs.append({
+            "role": "user",
+            "content": "以上定位结果已足够参考。若仍有地点未定位，本轮一次性补齐全部查询；否则立即输出最终 JSON，location 用 amapPoiId 引用。",
+        })
     return {"glm_messages": msgs, "pending_calls": None}
 
 
@@ -154,6 +175,8 @@ async def finalize(state: GenState, config) -> dict:
         trip = draft_to_trip(draft, req)
     except ValidationError as e:
         return _retry(state, [f"行程 JSON 结构不合法：{e.errors()[:3]}"])
+
+    _backfill_locations(trip, config["configurable"].get("executor"))
 
     result = validate_trip(trip, check_poi=amap.configured)
     if result.ok:

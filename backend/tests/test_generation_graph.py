@@ -141,3 +141,39 @@ def test_graph_compiles_and_mermaid_contains_nodes():
     graph = build_generation_graph()
     mermaid = graph.get_graph().draw_mermaid()
     assert "agent_call" in mermaid and "execute_tools" in mermaid and "finalize" in mermaid
+
+
+async def test_poi_id_reference_backfills_location():
+    """最终 JSON 用 poiId 引用（省模型抄写坐标），finalize 从工具缓存回填完整 location。"""
+    draft = {
+        "title": "重庆一日游",
+        "days": [
+            {"title": "D1", "activities": [
+                {"name": "洪崖洞民俗风貌区", "type": "attraction", "startTime": "09:00", "endTime": "11:00", "cost": 0,
+                 "location": {"amapPoiId": "P"}},
+            ]},
+        ],
+    }
+    glm = FakeGLM([
+        ToolRound(content="", tool_calls=[SEARCH_CALL]),
+        ToolRound(content=json.dumps(draft, ensure_ascii=False), tool_calls=[]),
+    ])
+    events = await _collect(glm=glm, amap=FakeAMap())
+    complete = events[-1]
+    assert complete.type == "complete"
+    loc = complete.trip.days[0].activities[0].location
+    assert loc.resolved is True
+    assert loc.longitude == 106.578 and loc.latitude == 29.562
+    assert loc.name  # 回填了规范名
+
+
+async def test_second_tool_round_appends_catchup_hint():
+    """第二轮工具调用后注入"一次性补齐"提醒，压制模型分批定位。"""
+    glm = FakeGLM([
+        ToolRound(content="", tool_calls=[SEARCH_CALL]),
+        ToolRound(content="", tool_calls=[SEARCH_CALL]),  # 第二轮
+        ToolRound(content=json.dumps(GOOD_DRAFT, ensure_ascii=False), tool_calls=[]),
+    ])
+    await _collect(glm=glm, amap=FakeAMap())
+    # 第二轮的下一批消息里应包含补齐提醒
+    assert any("一次性" in m.get("content", "") for m in glm.calls[2] if m.get("role") == "user")

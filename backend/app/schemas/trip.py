@@ -32,7 +32,8 @@ def _check_hhmm(v: str | None) -> str | None:
 
 
 class Location(CamelModel):
-    name: str
+    # name 可空：生成 JSON 允许 {"amapPoiId": "..."} 引用模式（省模型抄写坐标），finalize 回填补全
+    name: str = ""
     address: str = ""
     longitude: float | None = None
     latitude: float | None = None

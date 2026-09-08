@@ -112,3 +112,11 @@ async def ex_execute(fake, name, arguments):
     from app.agent.chat_tools import ToolExecutor as TE
 
     return await TE("坪山", fake).execute(name, arguments)
+
+
+async def test_search_poi_caches_location_by_poi_id():
+    fake = FakeAMap()
+    ex = ToolExecutor("杭州", fake)
+    await ex.execute("search_poi", '{"city": "杭州", "keyword": "雷峰塔"}')
+    assert "P" in ex.poi_cache  # 工具结果按 poi_id 缓存，供最终 JSON 回填
+    assert ex.poi_cache["P"]["longitude"] == 120.1

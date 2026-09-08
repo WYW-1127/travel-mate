@@ -75,6 +75,8 @@ class ToolExecutor:
         self.amap = amap
         self.remaining = max_calls
         self._admin_info: dict | None = None
+        # poi_id → location dict：最终 JSON 用 poiId 引用时由 finalize 回填，省模型抄写坐标
+        self.poi_cache: dict[str, dict] = {}
 
     async def _admin(self) -> dict:
         if self._admin_info is None:
@@ -105,6 +107,8 @@ class ToolExecutor:
             loc = await search_poi(await self._resolved_city(), str(args.get("keyword", "")), self.amap)
             if loc is None:
                 return json.dumps({"error": "未找到该地点，可尝试更换关键词或改用 geocode"}, ensure_ascii=False)
+            if loc.amap_poi_id:
+                self.poi_cache[loc.amap_poi_id] = loc.model_dump(by_alias=True)
             return loc.model_dump_json(by_alias=True)
 
         if name == "geocode":
