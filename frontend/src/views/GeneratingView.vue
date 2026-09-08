@@ -34,7 +34,6 @@ watch(
       const saved = trips.upsert({
         ...generation.result,
         thinking: generation.thinking,
-        thinkingMs: generation.thinkingMs,
       })
       router.replace({ name: 'trip-detail', params: { id: saved.id! } })
     }

@@ -6,47 +6,38 @@ const props = defineProps<{
   running: boolean
   /** 完成后的常驻面板默认折叠，生成进行中默认展开 */
   defaultExpanded?: boolean
-  /** 思考耗时毫秒（完成方传入；运行中面板自走计时） */
-  durationMs?: number | null
 }>()
 
 const expanded = ref(props.defaultExpanded ?? true)
 const body = ref<HTMLElement | null>(null)
 
-// 运行中本地走秒；结束后优先用外部传入的精确耗时（从首个 thinking 事件计起）
-const startedAt = ref<number | null>(null)
+// 计时：面板出现即起算（生成开始），running 结束时冻结——不持久化，刷新后旧行程不显示时长
+const startedAt = Date.now()
+const frozenMs = ref<number | null>(null)
 const tick = ref(0)
 let timer: ReturnType<typeof setInterval> | null = null
-
-function ensureTimer() {
-  if (timer || !props.running) return
-  startedAt.value = Date.now()
-  timer = setInterval(() => {
-    tick.value++
-  }, 200)
-}
-
-function stopTimer() {
-  if (timer) clearInterval(timer)
-  timer = null
-}
 
 watch(
   () => props.running,
   (running) => {
-    if (running) ensureTimer()
-    else stopTimer()
+    if (!running) {
+      if (timer) clearInterval(timer)
+      timer = null
+      frozenMs.value = Date.now() - startedAt
+    }
   },
   { immediate: true },
 )
+if (props.running) {
+  timer = setInterval(() => {
+    tick.value++
+  }, 200)
+}
+onUnmounted(() => timer && clearInterval(timer))
 
-onUnmounted(stopTimer)
-
-const elapsedMs = computed(() => {
-  if (!props.running) return props.durationMs ?? null
-  if (startedAt.value === null) return null
-  return Date.now() - startedAt.value // tick 仅用于触发响应式刷新
-})
+const elapsedMs = computed(() =>
+  props.running ? Date.now() - startedAt : frozenMs.value,
+)
 
 function fmt(ms: number | null): string {
   if (ms === null) return ''
