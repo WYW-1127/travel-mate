@@ -182,22 +182,6 @@ class AMapService:
             for c in casts
         ]
 
-    async def driving_route_minutes(
-        self, origin: tuple[float, float], destination: tuple[float, float]
-    ) -> int | None:
-        data = await self._get(
-            "/direction/driving",
-            {
-                "origin": f"{origin[0]},{origin[1]}",
-                "destination": f"{destination[0]},{destination[1]}",
-                "strategy": 0,
-            },
-        )
-        paths = (data.get("route") or {}).get("paths") or []
-        if not paths:
-            return None
-        return int(float(paths[0].get("duration", 0))) // 60
-
     async def aclose(self) -> None:
         if self._client is not None and self._owns_client:
             await self._client.aclose()

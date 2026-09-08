@@ -40,7 +40,6 @@ MAX_ROUNDS = 8  # 单轮对话内「模型↔工具」循环上限
 MAX_ATTEMPTS = 3  # 最终输出校验不过的带反馈重试（首次 + 2 次）
 HISTORY_LIMIT = 20  # 发给模型的对话历史上限
 CHAT_LIMIT = 50  # 行程内保存的对话上限
-DEFAULT_CHECKPOINT_DB = "default"  # 运行时从 settings.checkpoint_db 解析
 
 
 class _DayEdit(CamelModel):

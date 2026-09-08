@@ -85,26 +85,15 @@ async def test_missing_key_raises_without_network():
 
 
 @respx.mock
-async def test_geocode_and_route():
+async def test_geocode_returns_coords():
     respx.get(f"{BASE}/geocode/geo").mock(
         return_value=httpx.Response(
             200,
             json={"status": "1", "geocodes": [{"location": "106.55,29.56"}]},
         )
     )
-    respx.get(f"{BASE}/direction/driving").mock(
-        return_value=httpx.Response(
-            200,
-            json={
-                "status": "1",
-                "route": {"paths": [{"duration": "1500"}]},  # 秒
-            },
-        )
-    )
     svc = _svc()
     assert await svc.geocode("解放碑", "重庆") == (106.55, 29.56)
-    minutes = await svc.driving_route_minutes((106.55, 29.56), (106.58, 29.56))
-    assert minutes == 25  # 1500s = 25min
 
 
 def _poi_payload(cityname: str) -> dict:
