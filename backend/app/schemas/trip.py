@@ -98,6 +98,8 @@ class Trip(CamelModel):
     warnings: list[str] = Field(default_factory=list)
     # 最近一次生成/重规划的 AI 思考过程（前端写入，随行程持久化）
     thinking: str = ""
+    # 思考耗时毫秒（前端从首个 thinking 事件计到完成，随行程持久化）
+    thinking_ms: int | None = None
     # 生成时的偏好（带娃、不去网红店），对话式修改时注入提示词
     preferences: str = ""
     # 对话历史随行程持久化（≤50 条，超出由写入方裁剪）

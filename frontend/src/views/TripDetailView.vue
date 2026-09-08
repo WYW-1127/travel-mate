@@ -94,7 +94,7 @@ function printPdf() {
 
     <!-- 历史思考过程：随行程持久化，折叠可展开 -->
     <div v-if="store.trip.thinking" class="no-print mb-4">
-      <ThinkingPanel :text="store.trip.thinking" :running="false" :default-expanded="false" />
+      <ThinkingPanel :text="store.trip.thinking" :running="false" :default-expanded="false" :duration-ms="store.trip.thinkingMs" />
     </div>
 
     <div class="grid gap-4 lg:grid-cols-2">

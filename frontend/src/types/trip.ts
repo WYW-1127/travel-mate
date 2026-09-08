@@ -42,6 +42,8 @@ export interface Trip {
   warnings?: string[]
   /** 最近一次生成/重规划的 AI 思考过程，详情页可展开查看 */
   thinking?: string
+  /** 思考耗时毫秒（首个 thinking 事件 → 完成） */
+  thinkingMs?: number | null
   /** 生成时的偏好（带娃、不去网红店），对话修改时服务端注入提示词 */
   preferences?: string
   /** 与 AI 的对话历史，随行程持久化 */

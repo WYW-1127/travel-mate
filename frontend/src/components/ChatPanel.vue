@@ -28,8 +28,9 @@ async function send() {
   if (generation.phase === 'done' && generation.result) {
     // 只在真实改动（version+1）时存快照，纯问答不占撤销栈
     if (generation.result.version !== current.version) trips.saveSnapshot(current)
-    store.replaceTrip(generation.result)
-    trips.upsert(generation.result)
+    const next = { ...generation.result, thinking: generation.thinking, thinkingMs: generation.thinkingMs }
+    store.replaceTrip(next)
+    trips.upsert(next)
     draft.value = ''
   }
   // 静默抽取长期偏好入档案，失败不影响主流程
