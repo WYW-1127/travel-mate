@@ -11,28 +11,29 @@ const props = defineProps<{
 const expanded = ref(props.defaultExpanded ?? true)
 const body = ref<HTMLElement | null>(null)
 
-// 计时：面板出现即起算（生成开始），running 结束时冻结——不持久化，刷新后旧行程不显示时长
+// 计时：运行中的面板从挂载起走秒，running 结束时冻结显示；
+// 历史/常驻面板（挂载即非 running）不显示时长
 const startedAt = Date.now()
 const frozenMs = ref<number | null>(null)
 const tick = ref(0)
 let timer: ReturnType<typeof setInterval> | null = null
 
-watch(
-  () => props.running,
-  (running) => {
-    if (!running) {
-      if (timer) clearInterval(timer)
-      timer = null
-      frozenMs.value = Date.now() - startedAt
-    }
-  },
-  { immediate: true },
-)
 if (props.running) {
   timer = setInterval(() => {
     tick.value++
   }, 200)
 }
+
+watch(
+  () => props.running,
+  (running) => {
+    if (!running && timer) {
+      clearInterval(timer)
+      timer = null
+      frozenMs.value = Date.now() - startedAt
+    }
+  },
+)
 onUnmounted(() => timer && clearInterval(timer))
 
 const elapsedMs = computed(() =>
