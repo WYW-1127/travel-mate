@@ -163,3 +163,86 @@ async def test_resolve_city_empty_geocodes_falls_back():
         return_value=httpx.Response(200, json={"status": "1", "geocodes": []})
     )
     assert await _svc().resolve_city("不存在的地方") == "不存在的地方"
+
+
+@respx.mock
+async def test_poi_detail_parses_fields():
+    respx.get(f"{BASE}/place/detail").mock(
+        return_value=httpx.Response(
+            200,
+            json={
+                "status": "1",
+                "pois": [
+                    {
+                        "name": "大万世居",
+                        "type": "风景名胜",
+                        "address": "坪山大道",
+                        "opentime": "09:00-17:30",
+                        "rating": "4.5",
+                        "cost": "免费",
+                    }
+                ],
+            },
+        )
+    )
+    d = await _svc().poi_detail("B0FFF")
+    assert d == {
+        "name": "大万世居",
+        "type": "风景名胜",
+        "address": "坪山大道",
+        "opentime": "09:00-17:30",
+        "rating": "4.5",
+        "cost": "免费",
+    }
+
+
+@respx.mock
+async def test_poi_detail_empty_returns_none():
+    respx.get(f"{BASE}/place/detail").mock(
+        return_value=httpx.Response(200, json={"status": "1", "pois": []})
+    )
+    assert await _svc().poi_detail("B0FFF") is None
+
+
+@respx.mock
+async def test_weather_forecast_parses_days():
+    respx.get(f"{BASE}/weather/weatherInfo").mock(
+        return_value=httpx.Response(
+            200,
+            json={
+                "status": "1",
+                "forecast": [
+                    {"date": "2026-09-08", "dayweather": "晴", "nightweather": "多云",
+                     "daytemp": "30", "nighttemp": "25"},
+                ],
+            },
+        )
+    )
+    days = await _svc().weather_forecast("440300")
+    assert days == [
+        {"date": "2026-09-08", "dayweather": "晴", "nightweather": "多云",
+         "daytemp": "30", "nighttemp": "25"}
+    ]
+
+
+@respx.mock
+async def test_weather_bad_adcode_raises():
+    respx.get(f"{BASE}/weather/weatherInfo").mock(
+        return_value=httpx.Response(200, json={"status": "0", "info": "INVALID"})
+    )
+    import pytest as _pytest
+    from app.services.amap import AMapError as _AMapError
+
+    with _pytest.raises(_AMapError):
+        await _svc().weather_forecast("bad")
+
+
+@respx.mock
+async def test_resolve_admin_returns_city_and_adcode():
+    respx.get(f"{BASE}/geocode/geo").mock(
+        return_value=httpx.Response(
+            200,
+            json={"status": "1", "geocodes": [{"city": "深圳市", "adcode": "440300"}]},
+        )
+    )
+    assert await _svc().resolve_admin("坪山") == {"city": "深圳市", "adcode": "440300"}

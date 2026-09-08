@@ -109,21 +109,61 @@ class AMapService:
             return None
         return float(loc[0]), float(loc[1])
 
-    async def resolve_city(self, name: str) -> str:
-        """把目的地归一化为标准城市名（坪山→深圳市），供 POI 搜索的 city 参数使用。
+    async def resolve_admin(self, name: str) -> dict:
+        """目的地 → 标准城市名 + adcode（天气接口需要行政区划码）。
 
-        解析失败/非城市地域一律回退原名，调用方无需处理异常。"""
+        解析失败/非城市地域一律回退 {city: 原名, adcode: ""}，调用方无需处理异常。"""
         try:
             data = await self._get("/geocode/geo", {"address": name})
-        except Exception:  # noqa: BLE001 —— HTTP/API 错误一律回退原名，辅助步骤不能拖垮定位
-            return name
+        except Exception:  # noqa: BLE001 —— HTTP/API 错误一律回退，辅助步骤不能拖垮定位
+            return {"city": name, "adcode": ""}
         geocodes = data.get("geocodes") or []
         if not geocodes:
-            return name
-        city = geocodes[0].get("city") or name
+            return {"city": name, "adcode": ""}
+        g = geocodes[0]
+        city = g.get("city") or name
         if isinstance(city, list):  # 直辖市等场景 city 可能为空列表
             city = name
-        return str(city) or name
+        return {"city": str(city) or name, "adcode": str(g.get("adcode") or "")}
+
+    async def resolve_city(self, name: str) -> str:
+        return (await self.resolve_admin(name))["city"]
+
+    async def poi_detail(self, poi_id: str) -> dict | None:
+        """POI 深度信息（营业时间/评分/人均），字段可能缺失（空串），查不到返回 None。"""
+        try:
+            data = await self._get("/place/detail", {"id": poi_id})
+        except Exception:  # noqa: BLE001 —— 详情失败由调用方编码回传模型
+            return None
+        pois = data.get("pois") or []
+        if not pois:
+            return None
+        p = pois[0]
+        return {
+            "name": p.get("name", ""),
+            "type": p.get("type", ""),
+            "address": p.get("address") or "",
+            "opentime": p.get("opentime") or "",
+            "rating": p.get("rating") or "",
+            "cost": p.get("cost") or "",
+        }
+
+    async def weather_forecast(self, adcode: str) -> list[dict]:
+        """目的地未来 3 天预报（extensions=all），独立免费配额，不占 POI 日配额。"""
+        data = await self._get(
+            "/weather/weatherInfo", {"city": adcode, "extensions": "all"}
+        )
+        forecasts = data.get("forecast") or []
+        return [
+            {
+                "date": f.get("date", ""),
+                "dayweather": f.get("dayweather", ""),
+                "nightweather": f.get("nightweather", ""),
+                "daytemp": f.get("daytemp", ""),
+                "nighttemp": f.get("nighttemp", ""),
+            }
+            for f in forecasts
+        ]
 
     async def driving_route_minutes(
         self, origin: tuple[float, float], destination: tuple[float, float]
