@@ -174,12 +174,15 @@ async def test_poi_detail_parses_fields():
                 "status": "1",
                 "pois": [
                     {
-                        "name": "大万世居",
-                        "type": "风景名胜",
-                        "address": "坪山大道",
-                        "opentime": "09:00-17:30",
-                        "rating": "4.5",
-                        "cost": "免费",
+                        "name": "深圳欢乐谷",
+                        "type": "风景名胜;公园;游乐场",
+                        "address": "华侨城",
+                        "biz_ext": {
+                            "opentime2": "10:00-22:00",
+                            "rating": "4.7",
+                            "cost": [],
+                        },
+                        "tel": "0755-26949184",
                     }
                 ],
             },
@@ -187,12 +190,13 @@ async def test_poi_detail_parses_fields():
     )
     d = await _svc().poi_detail("B0FFF")
     assert d == {
-        "name": "大万世居",
+        "name": "深圳欢乐谷",
         "type": "风景名胜",
-        "address": "坪山大道",
-        "opentime": "09:00-17:30",
-        "rating": "4.5",
-        "cost": "免费",
+        "address": "华侨城",
+        "opentime": "10:00-22:00",
+        "rating": "4.7",
+        "cost": "",
+        "tel": "0755-26949184",
     }
 
 

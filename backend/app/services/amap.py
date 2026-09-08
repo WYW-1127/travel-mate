@@ -130,7 +130,9 @@ class AMapService:
         return (await self.resolve_admin(name))["city"]
 
     async def poi_detail(self, poi_id: str) -> dict | None:
-        """POI 深度信息（营业时间/评分/人均），字段可能缺失（空串），查不到返回 None。"""
+        """POI 深度信息（营业时间/评分/人均/电话），字段可能缺失（空串），查不到返回 None。
+
+        深度字段在高德返回的 biz_ext 里，且值可能是字符串或列表（cost 未填时为空列表）。"""
         try:
             data = await self._get("/place/detail", {"id": poi_id})
         except Exception:  # noqa: BLE001 —— 详情失败由调用方编码回传模型
@@ -139,13 +141,22 @@ class AMapService:
         if not pois:
             return None
         p = pois[0]
+        biz = p.get("biz_ext") or {}
+
+        def _first(v) -> str:
+            if isinstance(v, list):
+                return str(v[0]).strip() if v else ""
+            return str(v).strip() if v else ""
+
+        ptype = (p.get("type") or "").split(";")[0]
         return {
             "name": p.get("name", ""),
-            "type": p.get("type", ""),
+            "type": ptype,
             "address": p.get("address") or "",
-            "opentime": p.get("opentime") or "",
-            "rating": p.get("rating") or "",
-            "cost": p.get("cost") or "",
+            "opentime": _first(biz.get("opentime2")) or _first(biz.get("open_time")) or (p.get("opentime") or ""),
+            "rating": _first(biz.get("rating")),
+            "cost": _first(biz.get("cost")),
+            "tel": p.get("tel") or "",
         }
 
     async def weather_forecast(self, adcode: str) -> list[dict]:
