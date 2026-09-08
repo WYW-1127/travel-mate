@@ -14,3 +14,5 @@ class GenerateRequest(CamelModel):
     preferences: str = Field(default="", max_length=1000)
     # AI 思考深度档位；None = 跟随服务端默认（GLM_THINKING_EFFORT）
     thinking_effort: Literal["low", "high"] | None = None
+    # 客户端生成的请求标识：作为生成线程 id（gen:{request_id}），断线后凭它重放领取结果
+    request_id: str | None = None
