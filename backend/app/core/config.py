@@ -18,6 +18,8 @@ class Settings(BaseSettings):
     cors_origins: str = "http://localhost:5173"
     # LangGraph 检查点库；默认禁用（生成任务化后事件缓冲即重连通道，多连接写 sqlite 会锁冲突）
     checkpoint_db: str = ""
+    # POI 落盘缓存库（TTL 7 天，重复定位零 API）；空 = 纯内存
+    poi_cache_db: str = "data/poi_cache.db"
 
     @property
     def has_glm(self) -> bool:
