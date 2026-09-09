@@ -5,7 +5,6 @@
 """
 
 import json
-import re
 import sqlite3
 from pathlib import Path
 
@@ -25,16 +24,10 @@ def _resolve() -> str:
     return _db_path
 
 
-def _norm_pref(preferences: str) -> str:
-    """偏好归一化：分词（顿号/分号/逗号/空白）→ 去空 → 排序 → 拼接。
-    顺序和分隔符差异不影响命中；内容不同则不命中（宁可 miss 不给错行程）。"""
-    parts = [p.strip() for p in re.split(r"[；;，,、\s]+", preferences or "") if p.strip()]
-    return "|".join(sorted(parts))
-
-
 def cache_key(req: GenerateRequest) -> str:
+    """城市+天数即命中：偏好/档位差异交给命中后的对话微调（用户决策：放宽匹配）。"""
     city = (req.destination or "").strip().lower()
-    return f"{city}::{req.days}::{req.thinking_effort or 'default'}::{_norm_pref(req.preferences)}"
+    return f"{city}::{req.days}"
 
 
 def load(req: GenerateRequest) -> Trip | None:

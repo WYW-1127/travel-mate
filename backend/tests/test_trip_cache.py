@@ -87,12 +87,14 @@ async def test_second_identical_request_hits_cache():
     assert events2[-1].trip.thinking == "思考"
 
 
-async def test_different_preferences_miss():
+async def test_different_preferences_still_hit():
+    """城市+天数相同即命中，偏好差异交给对话微调。"""
     mgr = GenJobManager()
     await _drain(mgr.start(REQ, glm=FakeGLM(), amap=FakeAMap()))
     glm2 = FakeGLM()
     events = await _drain(mgr.start(REQ_DIFF_PREF, glm=glm2, amap=FakeAMap()))
-    assert glm2.calls > 0  # 未命中，走真实生成
+    assert glm2.calls == 0  # 偏好不同仍命中
+    assert events[-1].type == "complete"
 
 
 async def test_cancelled_job_not_cached():
