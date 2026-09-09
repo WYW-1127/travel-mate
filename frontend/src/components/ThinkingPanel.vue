@@ -39,9 +39,10 @@ watch(
 onUnmounted(() => timer && clearInterval(timer))
 
 const baseTs = () => props.startTs ?? startedAt
-const elapsedMs = computed(() =>
-  props.running ? Date.now() - baseTs() : frozenMs.value,
-)
+const elapsedMs = computed(() => {
+  void tick.value // 定时器心跳触发重算（Date.now 本身不是响应式依赖）
+  return props.running ? Date.now() - baseTs() : frozenMs.value
+})
 
 function fmt(ms: number | null): string {
   if (ms === null) return ''
