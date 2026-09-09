@@ -16,12 +16,23 @@ def _isolate_settings(monkeypatch):
 
 
 @pytest.fixture(autouse=True)
-def _clear_poi_cache():
-    from app.tools.poi import clear_cache
+def _clear_poi_cache(monkeypatch):
+    from app.tools import poi as poi_mod
 
-    clear_cache()
+    # 禁落盘：测试的 POI 缓存不写生产库（trip/POI 缓存均以 "" 表示禁用）
+    monkeypatch.setattr(poi_mod, "_cache_db_path", "")
+    poi_mod.clear_cache()
     yield
-    clear_cache()
+    poi_mod.clear_cache()
+
+
+@pytest.fixture(autouse=True)
+def _trip_cache_disabled(monkeypatch):
+    """测试禁用行程缓存（不读也不写生产库），避免污染/命中历史生成。"""
+    from app.services import trip_cache as tc
+
+    monkeypatch.setattr(tc, "_db_path", "")
+    yield
 
 
 @pytest.fixture

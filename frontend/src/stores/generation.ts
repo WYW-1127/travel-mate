@@ -13,6 +13,7 @@ export const useGenerationStore = defineStore('generation', {
     phase: 'idle' as GenerationPhase,
     messages: [] as string[],
     thinking: '',
+    thinkingStartTs: null as number | null,
     error: null as { code: string; message: string } | null,
     result: null as Trip | null,
     stop: null as (() => void) | null,
@@ -22,6 +23,7 @@ export const useGenerationStore = defineStore('generation', {
       this.phase = 'idle'
       this.messages = []
       this.thinking = ''
+      this.thinkingStartTs = null
       this.error = null
       this.result = null
       this.stop = null
@@ -39,6 +41,7 @@ export const useGenerationStore = defineStore('generation', {
         if (event.type === 'progress') {
           this.messages.push(event.message)
         } else if (event.type === 'thinking') {
+          if (this.thinkingStartTs === null && event.ts) this.thinkingStartTs = event.ts
           this.thinking += event.content
         } else if (event.type === 'complete') {
           this.result = event.trip

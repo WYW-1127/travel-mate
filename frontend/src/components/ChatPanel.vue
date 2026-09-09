@@ -72,7 +72,7 @@ function fmt(ts?: string) {
       {{ generation.messages.at(-1) ?? '…' }}
     </p>
     <div v-if="generation.phase === 'running'" class="mb-2">
-      <ThinkingPanel :text="generation.thinking" running />
+      <ThinkingPanel :text="generation.thinking" :start-ts="generation.thinkingStartTs" running />
     </div>
     <p v-else-if="generation.phase === 'error'" class="text-xs text-red-600">
       {{ generation.error?.message }}

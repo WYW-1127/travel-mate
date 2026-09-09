@@ -61,7 +61,7 @@ function backHome() {
       <h2 class="mb-2 text-xl font-bold">正在为你规划行程…</h2>
       <p class="h-5 text-slate-500">{{ latest }}</p>
       <div class="mx-auto mt-6 max-w-xl">
-        <ThinkingPanel :text="generation.thinking" running />
+        <ThinkingPanel :text="generation.thinking" :start-ts="generation.thinkingStartTs" running />
       </div>
       <button class="mt-8 text-sm text-slate-400 hover:text-slate-600" @click="backHome">取消，返回</button>
     </template>

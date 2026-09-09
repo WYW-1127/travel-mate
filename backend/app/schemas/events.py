@@ -18,10 +18,13 @@ class ProgressEvent(CamelModel):
 
 
 class ThinkingEvent(CamelModel):
-    """GLM 思考模式输出的推理过程增量文本，仅用于前端展示。"""
+    """GLM 思考模式输出的推理过程增量文本，仅用于前端展示。
+
+    ts 为服务端产生时刻（epoch 毫秒）：断线重放时前端凭首个 ts 还原真实思考耗时。"""
 
     type: Literal["thinking"] = "thinking"
     content: str
+    ts: int | None = None
 
 
 class CompleteEvent(CamelModel):

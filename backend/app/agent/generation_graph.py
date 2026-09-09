@@ -5,6 +5,7 @@
 对外 generate_trip 签名与 SSE 事件协议与迁移前完全一致。"""
 
 import asyncio
+import time
 import json
 import uuid
 from collections.abc import AsyncIterator
@@ -222,7 +223,7 @@ async def _run(graph, initial: GenState, config: dict) -> AsyncIterator[StreamEv
             if mode == "custom" and chunk:
                 kind = chunk.get("kind")
                 if kind == "thinking":
-                    yield ThinkingEvent(content=chunk["content"])
+                    yield ThinkingEvent(content=chunk["content"], ts=int(time.time() * 1000))
                 elif kind == "progress":
                     yield ProgressEvent(stage=ProgressStage.enrich, message=chunk["message"])
             elif mode == "values":

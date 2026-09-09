@@ -6,6 +6,8 @@ const props = defineProps<{
   running: boolean
   /** 完成后的常驻面板默认折叠，生成进行中默认展开 */
   defaultExpanded?: boolean
+  /** 首个思考事件的服务端时刻（epoch ms）；断线重放时凭它还原真实耗时 */
+  startTs?: number | null
 }>()
 
 const expanded = ref(props.defaultExpanded ?? true)
@@ -30,14 +32,15 @@ watch(
     if (!running && timer) {
       clearInterval(timer)
       timer = null
-      frozenMs.value = Date.now() - startedAt
+      frozenMs.value = Date.now() - baseTs()
     }
   },
 )
 onUnmounted(() => timer && clearInterval(timer))
 
+const baseTs = () => props.startTs ?? startedAt
 const elapsedMs = computed(() =>
-  props.running ? Date.now() - startedAt : frozenMs.value,
+  props.running ? Date.now() - baseTs() : frozenMs.value,
 )
 
 function fmt(ms: number | null): string {

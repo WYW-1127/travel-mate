@@ -7,6 +7,7 @@ START → agent_call ⇄ execute_tools（有工具调用时循环，≤MAX_ROUND
 对外的 chat_turn 签名与 SSE 事件协议与迁移前完全一致。"""
 
 import asyncio
+import time
 import json
 import uuid
 from collections.abc import AsyncIterator
@@ -239,7 +240,7 @@ async def _run(graph, initial: ChatState, config: dict) -> AsyncIterator[StreamE
             if mode == "custom" and chunk:
                 kind = chunk.get("kind")
                 if kind == "thinking":
-                    yield ThinkingEvent(content=chunk["content"])
+                    yield ThinkingEvent(content=chunk["content"], ts=int(time.time() * 1000))
                 elif kind == "progress":
                     yield ProgressEvent(stage=ProgressStage.enrich, message=chunk["message"])
             elif mode == "values":
