@@ -49,6 +49,16 @@ class GenState(TypedDict):
     done: dict | None  # {"trip": Trip} 或 {"error": [code, message]}
 
 
+def _notes_rule(req: GenerateRequest) -> str:
+    # 极速档输出即耗时：备注从简；深度/快速档的详细备注是核心价值（预约/衔接/适游提示）
+    if req.thinking_effort == "off":
+        return "notes 每条不超过 20 字，只写关键提示。"
+    return (
+        "notes 每条 40-60 字，写对游客真正有用的信息：是否需预约/购票、"
+        "与前后活动的交通衔接、适合人群或注意事项，不写空话。"
+    )
+
+
 def _system_prompt(req: GenerateRequest) -> str:
     budget = f"{req.budget_limit:.0f} 元" if req.budget_limit else "未定"
     return f"""你是资深国内旅行规划师。为用户规划逐日行程，并通过工具定位其中的地点。
@@ -62,7 +72,7 @@ def _system_prompt(req: GenerateRequest) -> str:
 - 偏好与要求：{req.preferences or "（无）"}
 
 规则：
-1. 每天 3-6 个活动（含用餐），时段 HH:MM，同一天内不重叠、按时间排序；同一天的活动集中在相邻区域，动线合理；notes 每条不超过 20 字，只写关键提示。
+1. 每天 3-6 个活动（含用餐），时段 HH:MM，同一天内不重叠、按时间排序；同一天的活动集中在相邻区域，动线合理。{_notes_rule(req)}
 2. 动身查询前先想好全部地点，然后在同一轮一次性并行调用 search_poi 定位**所有**地点——严禁分批多次查询，这是硬性要求。
 3. 严禁编造或抄写经纬度、地址。最终 JSON 的 location 一律用引用：{{"amapPoiId": "<该地点 search_poi 结果里的 amapPoiId>"}}，系统会自动回填坐标；搜索失败的地点才填 {{"name": "地点名", "resolved": false}}。
 4. type 取值：attraction | meal | transport | hotel | shopping；cost 是人均预估（元），免费填 0。

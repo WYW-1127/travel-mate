@@ -177,3 +177,14 @@ async def test_second_tool_round_appends_catchup_hint():
     await _collect(glm=glm, amap=FakeAMap())
     # 第二轮的下一批消息里应包含补齐提醒
     assert any("一次性" in m.get("content", "") for m in glm.calls[2] if m.get("role") == "user")
+
+
+def test_notes_rule_follows_effort_level():
+    from app.agent.generation_graph import _system_prompt
+
+    fast = _system_prompt(GenerateRequest.model_validate(
+        {"destination": "重庆", "days": 1, "thinking_effort": "off"}))
+    deep = _system_prompt(GenerateRequest.model_validate(
+        {"destination": "重庆", "days": 1, "thinking_effort": "high"}))
+    assert "不超过 20 字" in fast
+    assert "40-60 字" in deep
