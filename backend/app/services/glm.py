@@ -1,5 +1,6 @@
 import json
 import re
+import time
 from collections.abc import Callable
 from dataclasses import dataclass
 
@@ -159,10 +160,13 @@ class GLMService:
         """工具模式流式调用。messages 为完整消息历史（含 system/assistant/tool 角色），由调用方维护。
 
         reasoning 增量经 on_thinking 回调；tool_calls 分片按 index 聚合。"""
+        from app.core.trace import record_llm
+
         if not self._api_key:
             raise GLMError("GLM_API_KEY 未配置（见 backend/.env.example）")
         if self._client is None:
             self._client = httpx.AsyncClient(timeout=180.0)
+        _t0 = time.monotonic()
         payload = {
             "model": self._model,
             "messages": messages,
@@ -183,6 +187,7 @@ class GLMService:
         ) as resp:
             if resp.status_code != 200:
                 body = (await resp.aread()).decode("utf-8", errors="replace")
+                record_llm(self._model, (time.monotonic() - _t0) * 1000, 0, error=body[:200])
                 raise GLMError(f"GLM HTTP {resp.status_code}: {body[:200]}")
 
             content_parts: list[str] = []
@@ -221,6 +226,7 @@ class GLMService:
                 ToolCall(id=s["id"], name=s["name"], arguments=s["arguments"])
                 for _, s in sorted(calls.items())
             ]
+            record_llm(self._model, (time.monotonic() - _t0) * 1000, len(tool_calls))
             return ToolRound(
                 content="".join(content_parts),
                 tool_calls=tool_calls,

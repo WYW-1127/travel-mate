@@ -94,6 +94,8 @@ class ToolExecutor:
         self._admin_info: dict | None = None
         # poi_id → location dict：最终 JSON 用 poiId 引用时由 finalize 回填，省模型抄写坐标
         self.poi_cache: dict[str, dict] = {}
+        # 每次工具调用的结构化记录（eval 指标采集与 trace 的数据源）
+        self.calls: list[dict] = []
 
     async def _admin(self) -> dict:
         if self._admin_info is None:
@@ -110,6 +112,44 @@ class ToolExecutor:
         return json.dumps({"error": "定位次数已达上限，请基于已有信息完成回答"}, ensure_ascii=False)
 
     async def execute(self, name: str, arguments: str) -> str:
+        import time as _time
+
+        t0 = _time.monotonic()
+        result = await self._execute(name, arguments)
+        try:
+            parsed = json.loads(result)
+        except json.JSONDecodeError:
+            parsed = {}
+        record = {
+            "tool": name,
+            "arguments": arguments,
+            "is_error": isinstance(parsed, dict) and "error" in parsed,
+            "coords": self._coords_of(parsed),
+            "elapsed_ms": round((_time.monotonic() - t0) * 1000, 1),
+        }
+        self.calls.append(record)
+        from app.core.trace import record_tool
+
+        record_tool(record)
+        return result
+
+    @staticmethod
+    def _coords_of(parsed) -> list[tuple[float, float]]:
+        """从工具结果提取坐标（幻觉率检测：行程坐标必须出现在工具返回集合里）。"""
+        if not isinstance(parsed, dict):
+            return []
+        out = []
+        loc = parsed
+        if isinstance(parsed.get("pois"), list):  # search_around
+            for p in parsed["pois"]:
+                if isinstance(p, dict) and p.get("longitude") is not None:
+                    out.append((p["longitude"], p["latitude"]))
+            return out
+        if loc.get("longitude") is not None and loc.get("latitude") is not None:
+            out.append((loc["longitude"], loc["latitude"]))
+        return out
+
+    async def _execute(self, name: str, arguments: str) -> str:
         try:
             args = json.loads(arguments or "{}")
             if not isinstance(args, dict):

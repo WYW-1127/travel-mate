@@ -141,3 +141,15 @@ async def test_around_tool_returns_nearby_pois():
 async def test_around_tool_requires_coords():
     out = json.loads(await ToolExecutor("北京", FakeAMap()).execute("search_around", '{"keywords": "素食"}'))
     assert "error" in out
+
+
+async def test_execute_records_call_trace():
+    ex = ToolExecutor("杭州", FakeAMap())
+    await ex.execute("search_poi", '{"city": "杭州", "keyword": "雷峰塔"}')
+    await ex.execute("weather", "{}")
+    await ex.execute("nope", "{}")
+    assert [c["tool"] for c in ex.calls] == ["search_poi", "weather", "nope"]
+    assert ex.calls[0]["is_error"] is False
+    assert (120.1, 30.2) in ex.calls[0]["coords"]  # 幻觉检测数据源
+    assert ex.calls[2]["is_error"] is True
+    assert all(c["elapsed_ms"] >= 0 for c in ex.calls)

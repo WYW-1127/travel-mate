@@ -255,6 +255,9 @@ async def generate_trip(
     amap: AMapService | None = None,
     checkpoint_db: str | None = None,  # None=不落检查点（默认）；显式路径才启用
 ) -> AsyncIterator[StreamEvent]:
+    from app.core.trace import start_trace
+
+    start_trace("gen", destination=req.destination, effort=req.thinking_effort)
     glm = glm or GLMService(thinking_effort=req.thinking_effort)
     amap = amap or AMapService()
 

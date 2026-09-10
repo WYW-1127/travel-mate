@@ -1,0 +1,27 @@
+{
+  "id": "trip_lhasa",
+  "title": "拉萨经典一日：上午布达拉宫、下午古城转经",
+  "destination": "西藏",
+  "version": 1,
+  "travelers": {"adults": 2, "children": 0},
+  "days": [
+    {
+      "title": "宫殿与八廓古城一日精华",
+      "activities": [
+        {"id": "a1", "name": "光明港琼甜茶馆", "type": "meal", "startTime": "08:00", "endTime": "09:15", "cost": 20,
+         "notes": "老字号甜茶馆", "location": {"name": "光明港琼甜茶馆", "resolved": true, "longitude": 91.132, "latitude": 29.653}},
+        {"id": "a2", "name": "布达拉宫", "type": "attraction", "startTime": "09:40", "endTime": "12:10", "cost": 200,
+         "notes": "需提前预约", "location": {"name": "布达拉宫", "resolved": true, "longitude": 91.117, "latitude": 29.656}},
+        {"id": "a3", "name": "玛吉阿米", "type": "meal", "startTime": "12:40", "endTime": "14:10", "cost": 90,
+         "notes": "八廓街转角藏餐吧", "location": {"name": "玛吉阿米", "resolved": true, "longitude": 91.135, "latitude": 29.652}},
+        {"id": "a4", "name": "大昭寺", "type": "attraction", "startTime": "14:20", "endTime": "15:50", "cost": 85,
+         "notes": "旺季需预约", "location": {"name": "大昭寺", "resolved": true, "longitude": 91.139, "latitude": 29.652}},
+        {"id": "a5", "name": "八廓街", "type": "attraction", "startTime": "16:00", "endTime": "17:30", "cost": 0,
+         "notes": "顺时针转经", "location": {"name": "八廓街", "resolved": true, "longitude": 91.137, "latitude": 29.652}},
+        {"id": "a6", "name": "布达拉宫广场", "type": "attraction", "startTime": "19:30", "endTime": "21:00", "cost": 0,
+         "notes": "夜间灯光", "location": {"name": "布达拉宫广场", "resolved": true, "longitude": 91.115, "latitude": 29.654}}
+      ]
+    }
+  ],
+  "chat": []
+}

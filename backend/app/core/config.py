@@ -22,6 +22,8 @@ class Settings(BaseSettings):
     poi_cache_db: str = "data/poi_cache.db"
     # 行程缓存库（相似请求秒回，LRU 200 条）；空 = 禁用
     trip_cache_db: str = "data/trip_cache.db"
+    # 请求级 trace（LLM/工具调用明细 JSONL）；空 = 禁用
+    trace_file: str = "data/traces.jsonl"
 
     @property
     def has_glm(self) -> bool:

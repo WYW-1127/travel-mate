@@ -1,0 +1,22 @@
+name: travelmate
+
+services:
+  backend:
+    build: ./backend
+    env_file: backend/.env
+    environment:
+      - CORS_ORIGINS=http://localhost:5173,http://127.0.0.1:5173
+    volumes:
+      - appdata:/app/data      # 三类 sqlite（POI 缓存/行程缓存/trace）持久化
+    ports:
+      - "8000:8000"
+
+  frontend:
+    build: ./frontend
+    depends_on:
+      - backend
+    ports:
+      - "5173:80"
+
+volumes:
+  appdata:

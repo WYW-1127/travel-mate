@@ -249,9 +249,13 @@ async def _run(graph, initial: ChatState, config: dict) -> AsyncIterator[StreamE
         yield ErrorEvent(code="GLM_ERROR", message=str(e))
         return
     done = (final or {}).get("done") or {}
+    from app.core.trace import finish_trace
+
     if "trip" in done:
+        finish_trace("complete")
         yield CompleteEvent(trip=done["trip"])
     else:
+        finish_trace("error")
         code, message = done.get("error", ("INTERNAL", "未知错误"))
         yield ErrorEvent(code=code, message=message)
 
@@ -266,6 +270,9 @@ async def chat_turn(
     amap: AMapService | None = None,
     checkpoint_db: str | None = None,  # None=不落检查点（默认）；显式路径才启用
 ) -> AsyncIterator[StreamEvent]:
+    from app.core.trace import start_trace
+
+    start_trace("chat", destination=req.trip.destination, effort=req.thinking_effort)
     glm = glm or GLMService(thinking_effort=req.thinking_effort)
     amap = amap or AMapService()
     trip = req.trip.model_copy(deep=True)
